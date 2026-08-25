@@ -1,0 +1,151 @@
+<!doctype html>
+<html lang="bs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>SA Investment | Predračuni</title>
+<style>
+:root{--navy:#12345b;--blue:#1769e0;--bg:#f4f7fb;--line:#d9e1ea;--text:#172033;--muted:#667085;--white:#fff;--danger:#b42318}
+*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
+header{background:var(--navy);color:white;padding:18px 16px;position:sticky;top:0;z-index:5}
+header b{font-size:20px}.wrap{max-width:1050px;margin:auto;padding:16px}
+.card{background:white;border:1px solid #e7ebf0;border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 4px 16px #1720330b}
+h2{font-size:18px;margin:0 0 15px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+label{display:block;font-size:13px;font-weight:700;color:#475467;margin-bottom:6px}
+input,select,textarea{width:100%;border:1px solid #cfd8e3;border-radius:10px;padding:12px;font-size:16px;background:#fff}
+textarea{min-height:90px;resize:vertical}.items{overflow-x:auto}.row{display:grid;grid-template-columns:110px minmax(240px,2fr) 80px 90px 130px 130px 48px;gap:8px;min-width:880px;margin-bottom:10px;align-items:end}
+.row .total{background:#f8fafc}.btn{border:0;border-radius:11px;padding:12px 16px;font-size:15px;font-weight:700;cursor:pointer}
+.primary{background:var(--blue);color:#fff}.secondary{background:#fff;color:var(--blue);border:1px solid #b9c9dd}.danger{color:var(--danger);background:#fff;border:1px solid #f0c7c3;padding:11px}
+.actions{display:flex;gap:10px;flex-wrap:wrap}.summary{margin-left:auto;max-width:420px}.sumline{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0f3}.grand{font-size:19px;font-weight:800}
+.preview{display:none}.paper{background:white;max-width:900px;margin:0 auto;padding:45px;min-height:1100px;box-shadow:0 3px 18px #0002}
+.paperHead{display:flex;justify-content:space-between;gap:20px}.brand{font-size:30px;font-weight:800;color:#142c8e}.company{text-align:right;font-size:12px;line-height:1.5}
+.offerTop{display:flex;justify-content:space-between;gap:30px;margin-top:100px}.offerInfo{line-height:1.55}.buyer{border:1px solid #555;padding:30px;min-width:330px;text-align:center;font-weight:700}
+table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{border:1px solid #777;padding:8px}th{text-align:center}.right{text-align:right}.paperTotals{width:55%;margin:45px 0 0 auto}.note{margin-top:30px;font-size:13px;line-height:1.5}
+@media(max-width:650px){.grid,.grid3{grid-template-columns:1fr}.wrap{padding:10px}.card{padding:14px}.paper{padding:22px}.offerTop{margin-top:55px;display:block}.buyer{min-width:0;margin-top:20px}.paperHead{display:block}.company{text-align:left;margin-top:18px}.paperTotals{width:100%}}
+@media print{body{background:white}.app,header{display:none!important}.preview{display:block!important}.paper{box-shadow:none;max-width:none;min-height:0;padding:15mm}}
+</style>
+</head>
+<body>
+<header><b>SA Investment</b><div style="font-size:12px;opacity:.8">Predračuni</div></header>
+
+<div class="wrap app">
+ <div class="card">
+  <h2>Podaci predračuna</h2>
+  <div class="grid3">
+   <div><label>Broj predračuna</label><input id="offerNo"></div>
+   <div><label>Datum ponude</label><input id="date" type="date"></div>
+   <div><label>Važenje ponude (dana)</label><input id="valid" type="number" value="5"></div>
+   <div><label>Mjesto isporuke / ugradnje</label><input id="place" value="Sarajevo"></div>
+   <div><label>Način plaćanja</label><select id="payment"><option>Virmanski, avansno</option><option>Virmanski</option><option>Gotovina</option><option>Avansno</option></select></div>
+  </div>
+ </div>
+
+ <div class="card">
+  <h2>Kupac</h2>
+  <div class="grid">
+   <div><label>Ime / naziv firme</label><input id="buyerName" placeholder="npr. Emir Hodžić"></div>
+   <div><label>Adresa</label><input id="buyerAddress" placeholder="Ulica i broj"></div>
+   <div><label>Grad</label><input id="buyerCity" placeholder="Sarajevo"></div>
+   <div><label>Telefon</label><input id="buyerPhone"></div>
+   <div><label>E-mail</label><input id="buyerEmail" type="email"></div>
+   <div><label>ID / PDV broj</label><input id="buyerTax"></div>
+  </div>
+ </div>
+
+ <div class="card">
+  <h2>Stavke predračuna</h2>
+  <div class="items" id="items"></div>
+  <button class="btn secondary" onclick="addItem()">+ Dodaj stavku</button>
+ </div>
+
+ <div class="card">
+  <h2>Obračun</h2>
+  <div class="summary">
+   <div class="sumline"><span>Ukupna vrijednost</span><b id="net">0,00 KM</b></div>
+   <div class="sumline"><span>Osnovica za PDV</span><b id="base">0,00 KM</b></div>
+   <div class="sumline"><span>PDV (17%)</span><b id="vat">0,00 KM</b></div>
+   <div class="sumline grand"><span>UKUPNO SA PDV-om</span><span id="gross">0,00 KM</span></div>
+  </div>
+ </div>
+
+ <div class="card">
+  <h2>Napomena</h2>
+  <textarea id="note">Garancija na ponuđeni/ugrađeni klima uređaj je 3+2 godina uz redovan servis.
+SA Investment je ovlašteni serviser i prodavac VIVAX klima uređaja.</textarea>
+ </div>
+
+ <div class="actions">
+  <button class="btn secondary" onclick="saveDraft()">Sačuvaj nacrt</button>
+  <button class="btn primary" onclick="showPreview()">Pregled predračuna</button>
+  <button class="btn primary" onclick="printOffer()">Kreiraj PDF / štampaj</button>
+ </div>
+</div>
+
+<div class="preview" id="preview"><div class="paper">
+ <div class="paperHead">
+  <div><div class="brand">SA Investment</div><b>D.O.O. ZA KONSALTING I INVESTIRANJE</b></div>
+  <div class="company">SA Investment d.o.o. Sarajevo<br>Bulevar Meše Selimovića 2c,<br>71000 Sarajevo, BiH<br>Tel: +387 33 864 501<br>e-mail: info@sainvestment.ba<br>ID broj: 4201250550006<br>PDV broj: 201250550006<br>MF banka: 572 456 000 009 7117<br>NLB banka: 132 020 202 863 8842</div>
+ </div>
+ <div class="offerTop">
+  <div class="offerInfo" id="pInfo"></div>
+  <div class="buyer" id="pBuyer"></div>
+ </div>
+ <table><thead><tr><th>Rb.</th><th>Šifra</th><th>Naziv artikla</th><th>JM</th><th>Kol.</th><th>Jedinična cijena</th><th>Ukupna cijena</th><th>PDV</th><th>Ukupno sa PDV</th></tr></thead><tbody id="pItems"></tbody></table>
+ <div class="paperTotals" id="pTotals"></div>
+ <div class="note"><i>Napomena:</i><br><span id="pNote"></span></div>
+ <div style="text-align:right;margin-top:45px">Ponudu sastavio:<br><br>________________________</div>
+</div></div>
+
+<script>
+const $=id=>document.getElementById(id);
+const money=n=>(Number(n)||0).toLocaleString('bs-BA',{minimumFractionDigits:2,maximumFractionDigits:2})+' KM';
+function defaultNo(){
+ const d=new Date(), m=String(d.getMonth()+1).padStart(2,'0');
+ return '001/'+m+'/'+d.getFullYear();
+}
+function addItem(data={}){
+ const r=document.createElement('div'); r.className='row';
+ r.innerHTML=`
+ <div><label>Šifra</label><input class="code" value="${data.code||''}"></div>
+ <div><label>Naziv / model</label><input class="name" value="${data.name||''}"></div>
+ <div><label>JM</label><input class="unit" value="${data.unit||'kom'}"></div>
+ <div><label>Količina</label><input class="qty" type="number" step="0.01" value="${data.qty||1}"></div>
+ <div><label>Jed. cijena</label><input class="price" type="number" step="0.01" value="${data.price||0}"></div>
+ <div><label>Ukupno</label><input class="total" readonly></div>
+ <button class="btn danger" title="Izbriši" onclick="this.parentElement.remove();calc()">🗑</button>`;
+ $('items').appendChild(r);
+ r.querySelectorAll('input').forEach(x=>x.addEventListener('input',calc)); calc();
+}
+function rows(){return [...document.querySelectorAll('#items .row')]}
+function calc(){
+ let net=0;
+ rows().forEach(r=>{let t=(+r.querySelector('.qty').value||0)*(+r.querySelector('.price').value||0);r.querySelector('.total').value=t.toFixed(2);net+=t});
+ let vat=net*.17, gross=net+vat;
+ $('net').textContent=money(net);$('base').textContent=money(net);$('vat').textContent=money(vat);$('gross').textContent=money(gross);
+ return {net,vat,gross};
+}
+function fillPreview(){
+ const s=calc(), date=$('date').value?new Date($('date').value+'T00:00:00').toLocaleDateString('bs-BA'):'';
+ $('pInfo').innerHTML=`<b>Ponuda-predračun br.: ${$('offerNo').value}</b><br>Datum ponude: ${date}<br>Važenje ponude: ${$('valid').value} dana<br>Mjesto isporuke/ugradnje: ${$('place').value}<br>Način plaćanja: ${$('payment').value}`;
+ $('pBuyer').innerHTML=`${$('buyerName').value||'Kupac'}<br>${$('buyerAddress').value||''}${$('buyerCity').value?', '+$('buyerCity').value:''}`;
+ $('pItems').innerHTML=rows().map((r,i)=>{
+  let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,n=q*p,v=n*.17;
+  return `<tr><td>${i+1}</td><td>${r.querySelector('.code').value}</td><td>${r.querySelector('.name').value}</td><td>${r.querySelector('.unit').value}</td><td class="right">${q}</td><td class="right">${money(p).replace(' KM','')}</td><td class="right">${money(n).replace(' KM','')}</td><td class="right">${money(v).replace(' KM','')}</td><td class="right">${money(n+v).replace(' KM','')}</td></tr>`}).join('');
+ $('pTotals').innerHTML=`<div class="sumline"><span>Ukupna vrijednost:</span><b>${money(s.net).replace(' KM','')}</b></div><div class="sumline"><span>Osnovica za PDV:</span><b>${money(s.net).replace(' KM','')}</b></div><div class="sumline"><span>Iznos PDV-a (17%):</span><b>${money(s.vat).replace(' KM','')}</b></div><div class="sumline grand"><span>UKUPNO SA PDV-om:</span><span>${money(s.gross).replace(' KM','')}</span></div>`;
+ $('pNote').innerHTML=$('note').value.replace(/\n/g,'<br>');
+}
+function showPreview(){fillPreview();$('preview').style.display='block';$('preview').scrollIntoView({behavior:'smooth'})}
+function printOffer(){fillPreview();window.print()}
+function saveDraft(){
+ const data={offerNo:$('offerNo').value,date:$('date').value,valid:$('valid').value,place:$('place').value,payment:$('payment').value,buyerName:$('buyerName').value,buyerAddress:$('buyerAddress').value,buyerCity:$('buyerCity').value,buyerPhone:$('buyerPhone').value,buyerEmail:$('buyerEmail').value,buyerTax:$('buyerTax').value,note:$('note').value,items:rows().map(r=>({code:r.querySelector('.code').value,name:r.querySelector('.name').value,unit:r.querySelector('.unit').value,qty:r.querySelector('.qty').value,price:r.querySelector('.price').value}))};
+ localStorage.setItem('sa_offer_draft',JSON.stringify(data)); alert('Nacrt je sačuvan na ovom uređaju.');
+}
+(function init(){
+ const d=new Date();$('date').value=d.toISOString().slice(0,10);$('offerNo').value=defaultNo();
+ addItem({code:'18_ch',name:'VIVAX COOL, klima uređaj ACP-18CH50AERI+ R32',unit:'kom',qty:1,price:1366});
+ addItem({code:'wifi',name:'Wifi modul',unit:'kom',qty:1,price:25});
+})();
+</script>
+</body>
+</html>
