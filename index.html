@@ -35,7 +35,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <label>E-mail</label><input id="loginEmail" type="email">
 <div style="height:10px"></div><label>Lozinka</label><input id="loginPassword" type="password">
 <div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button>
-<div id="loginMsg" style="margin-top:12px;color:#b42318"></div></div></div>
+<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v1.2</div></div></div>
 <div id="archiveBox" class="wrap" style="display:none">
 <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>Arhiva predračuna</h2><button class="btn secondary" onclick="showEditor()">+ Novi predračun</button></div>
 <input id="archiveSearch" placeholder="Pretraži broj ili kupca..." oninput="renderArchive()">
@@ -111,7 +111,7 @@ SA Investment je ovlašteni serviser i prodavac VIVAX klima uređaja.</textarea>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
 const SUPABASE_URL="https://imkuwwuazgkabyibkfbe.supabase.co";
-const SUPABASE_KEY="sb_publishable_Z6tehbLjmsx05vDzMWqJ8g_PK3EvbJy";
+const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imlta3V3d3VhemdrYWJ5aWJrZmJlIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODc2NDEwMTEsImV4cCI6MjEwMzIxNzAxMX0.4bp1z0NSC2ZNh21XJU-ceC4ASYfXIU2xgzBeG6uHpjo";
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 const $=id=>document.getElementById(id);
