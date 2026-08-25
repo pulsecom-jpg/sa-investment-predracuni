@@ -35,7 +35,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <label>E-mail</label><input id="loginEmail" type="email">
 <div style="height:10px"></div><label>Lozinka</label><input id="loginPassword" type="password">
 <div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button>
-<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v2.2</div></div></div>
+<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v2.4</div></div></div>
 <div id="homeBox" class="wrap" style="display:none;max-width:760px">
 <div class="card" style="padding:22px">
  <h2 style="font-size:24px;margin-bottom:8px">Predračuni</h2>
@@ -104,7 +104,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
  <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Kupac</h2><button class="btn secondary" onclick="pickCustomer()">Pronađi postojećeg kupca</button></div>
   <div class="grid">
-   <div><label>Ime / naziv firme</label><input id="buyerName" placeholder="npr. Emir Hodžić"></div>
+   <div style="position:relative"><label>Ime / naziv firme</label><input id="buyerName" placeholder="Počni kucati ime kupca..." autocomplete="off" oninput="customerSuggest()" onfocus="customerSuggest()"><div id="customerSuggestions" style="display:none;position:absolute;z-index:20;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
    <div><label>Adresa</label><input id="buyerAddress" placeholder="Ulica i broj"></div>
    <div><label>Grad</label><input id="buyerCity" placeholder="Sarajevo"></div>
    <div><label>Telefon</label><input id="buyerPhone"></div>
@@ -185,11 +185,38 @@ function defaultNo(){
  const d=new Date(), m=String(d.getMonth()+1).padStart(2,'0');
  return '001/'+m+'/'+d.getFullYear();
 }
+async function ensureProductsLoaded(){
+ if(!productsData.length){
+  const {data,error}=await sb.from('products').select('*').eq('active',true).order('name');
+  if(!error)productsData=data||[];
+ }
+}
+async function productSuggestForRow(row,source){
+ await ensureProductsLoaded();
+ const input=row.querySelector(source==='code'?'.code':'.name');
+ const box=source==='code'?row.querySelector('.codeSuggestions'):row.querySelector('.name').parentElement.querySelector('.productSuggestions');
+ const q=(input.value||'').trim().toLowerCase();
+ const a=productsData.filter(p=>!q||String(source==='code'?(p.code||''):(p.name||'')).toLowerCase().includes(q)||String(p.code||'').toLowerCase().includes(q)||String(p.name||'').toLowerCase().includes(q)).slice(0,8);
+ row.querySelectorAll('.productSuggestions').forEach(b=>{if(b!==box)b.style.display='none'});
+ if(!a.length){box.style.display='none';return}
+ box.innerHTML=a.map(p=>`<div onclick="selectProductForRow(this,'${p.id}')" style="padding:10px 12px;border-bottom:1px solid #edf0f3;cursor:pointer"><b>${p.code||'—'} · ${p.name}</b><br><span style="font-size:12px;color:#667085">${p.unit||'kom'} · ${money(p.default_price)} bez PDV · ${money((+p.default_price||0)*1.17)} sa PDV</span></div>`).join('');
+ box.style.display='block';
+}
+function selectProductForRow(el,id){
+ const row=el.closest('.row'),p=productsData.find(x=>x.id===id);if(!row||!p)return;
+ row.querySelector('.code').value=p.code||'';
+ row.querySelector('.name').value=p.name||'';
+ row.querySelector('.unit').value=p.unit||'kom';
+ row.querySelector('.price').value=(+p.default_price||0).toFixed(2);
+ row.querySelector('.grossprice').value=((+p.default_price||0)*1.17).toFixed(2);
+ row.querySelectorAll('.productSuggestions').forEach(b=>b.style.display='none');
+ calc();
+}
 function addItem(data={}){
  const r=document.createElement('div'); r.className='row';
  r.innerHTML=`
- <div><label>Šifra</label><input class="code" value="${data.code||''}"></div>
- <div><label>Naziv / model</label><input class="name" value="${data.name||''}"></div>
+ <div style="position:relative"><label>Šifra</label><input class="code" autocomplete="off" value="${data.code||''}" placeholder="Šifra"><div class="codeSuggestions productSuggestions" style="display:none;position:absolute;z-index:30;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
+ <div style="position:relative"><label>Naziv / model</label><input class="name" autocomplete="off" value="${data.name||''}" placeholder="Počni kucati artikal..."><div class="productSuggestions" style="display:none;position:absolute;z-index:30;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
  <div><label>JM</label><input class="unit" value="${data.unit||'kom'}"></div>
  <div><label>Količina</label><input class="qty" type="number" step="0.01" value="${data.qty||1}"></div>
  <div><label>Cijena bez PDV</label><input class="price" type="number" step="0.01" value="${data.price||0}"></div>
@@ -201,7 +228,11 @@ function addItem(data={}){
  netInput.addEventListener('input',()=>{grossInput.value=((+netInput.value||0)*1.17).toFixed(2);calc()});
  grossInput.addEventListener('input',()=>{netInput.value=((+grossInput.value||0)/1.17).toFixed(2);calc()});
  r.querySelector('.qty').addEventListener('input',calc);
- r.querySelectorAll('.code,.name,.unit').forEach(x=>x.addEventListener('input',calc));
+ r.querySelector('.name').addEventListener('input',()=>{productSuggestForRow(r,'name');calc()});
+ r.querySelector('.name').addEventListener('focus',()=>productSuggestForRow(r,'name'));
+ r.querySelector('.code').addEventListener('input',()=>{productSuggestForRow(r,'code');calc()});
+ r.querySelector('.code').addEventListener('focus',()=>productSuggestForRow(r,'code'));
+ r.querySelector('.unit').addEventListener('input',calc);
  calc();
 }
 function rows(){return [...document.querySelectorAll('#items .row')]}
@@ -241,7 +272,7 @@ async function boot(){
  $('loginBox').style.display=session?'none':'block';
  $('editorBox').style.display='none';
  $('topNav').style.display=session?'block':'none';
- if(session){await loadArchive();showHome();}
+ if(session){await loadArchive();await ensureCustomersLoaded();await ensureProductsLoaded();showHome();}
 }
 async function saveOffer(){
  if(!$('buyerName').value.trim()){alert('Unesi ime / naziv kupca.');return}
@@ -377,12 +408,37 @@ let customersData=[],productsData=[],editingCustomerId=null,editingProductId=nul
 function hideMainViews(){
  ['homeBox','archiveBox','editorBox','dashboardBox','customersBox','productsBox'].forEach(id=>{if($(id))$(id).style.display='none'});
 }
+async function ensureCustomersLoaded(){
+ if(!customersData.length){
+  const {data,error}=await sb.from('customers').select('*').order('name');
+  if(!error)customersData=data||[];
+ }
+}
+async function customerSuggest(){
+ await ensureCustomersLoaded();
+ const box=$('customerSuggestions'),q=$('buyerName').value.trim().toLowerCase();
+ const a=customersData.filter(c=>!q||[c.name,c.city,c.phone,c.email].join(' ').toLowerCase().includes(q)).slice(0,8);
+ if(!a.length){box.style.display='none';return}
+ box.innerHTML=a.map(c=>`<div onclick="selectSuggestedCustomer('${c.id}')" style="padding:11px 12px;border-bottom:1px solid #edf0f3;cursor:pointer"><b>${c.name}</b><br><span style="font-size:12px;color:#667085">${c.city||''}${c.phone?' · '+c.phone:''}</span></div>`).join('');
+ box.style.display='block';
+}
+function selectSuggestedCustomer(id){
+ const c=customersData.find(x=>x.id===id);if(!c)return;
+ $('buyerName').value=c.name||'';$('buyerAddress').value=c.address||'';$('buyerCity').value=c.city||'';$('buyerPhone').value=c.phone||'';$('buyerEmail').value=c.email||'';$('buyerTax').value=c.id_number||c.vat_number||'';
+ $('customerSuggestions').style.display='none';
+}
+async function deleteCustomer(id,name){
+ if(!confirm(`Izbrisati kupca "${name}" iz baze?\n\nPostojeći predračuni tog kupca ostaju sačuvani u arhivi.`))return;
+ const {error}=await sb.from('customers').delete().eq('id',id);
+ if(error){alert('Kupca nije moguće izbrisati: '+error.message);return}
+ customersData=customersData.filter(c=>c.id!==id);renderCustomers();
+}
 async function loadCustomers(){const {data,error}=await sb.from('customers').select('*').order('name');if(error){alert(error.message);return}customersData=data||[];renderCustomers()}
 function showCustomers(){hideMainViews();$('customersBox').style.display='block';loadCustomers();window.scrollTo({top:0,behavior:'smooth'})}
 function renderCustomers(){
  const q=($('customerSearch')?.value||'').toLowerCase();
  const a=customersData.filter(c=>[c.name,c.city,c.phone,c.email].join(' ').toLowerCase().includes(q));
- $('customersList').innerHTML=a.length?a.map(c=>`<div style="padding:13px 0;border-bottom:1px solid #e7ebf0"><b>${c.name}</b><br><span style="color:#667085">${c.address||''}${c.city?' · '+c.city:''}${c.phone?' · '+c.phone:''}</span><div style="margin-top:8px"><button class="btn secondary" onclick="editCustomer('${c.id}')">Uredi</button> <button class="btn secondary" onclick="useCustomer('${c.id}')">Koristi u predračunu</button></div></div>`).join(''):'<div style="color:#667085">Nema kupaca.</div>';
+ $('customersList').innerHTML=a.length?a.map(c=>`<div style="padding:13px 0;border-bottom:1px solid #e7ebf0"><b>${c.name}</b><br><span style="color:#667085">${c.address||''}${c.city?' · '+c.city:''}${c.phone?' · '+c.phone:''}</span><div style="margin-top:8px"><button class="btn secondary" onclick="editCustomer('${c.id}')">Uredi</button> <button class="btn secondary" onclick="useCustomer('${c.id}')">Koristi u predračunu</button> <button class="btn danger" onclick="deleteCustomer('${c.id}','${c.name.replace(/'/g,"&#39;")}')">Izbriši</button></div></div>`).join(''):'<div style="color:#667085">Nema kupaca.</div>';
 }
 function newCustomerForm(){editingCustomerId=null;['cName','cAddress','cCity','cPhone','cEmail','cId','cVat'].forEach(id=>$(id).value='');$('customerFormTitle').textContent='Novi kupac';$('customerForm').style.display='block'}
 function editCustomer(id){const c=customersData.find(x=>x.id===id);if(!c)return;editingCustomerId=id;$('cName').value=c.name||'';$('cAddress').value=c.address||'';$('cCity').value=c.city||'';$('cPhone').value=c.phone||'';$('cEmail').value=c.email||'';$('cId').value=c.id_number||'';$('cVat').value=c.vat_number||'';$('customerFormTitle').textContent='Uredi kupca';$('customerForm').style.display='block';$('customerForm').scrollIntoView({behavior:'smooth'})}
