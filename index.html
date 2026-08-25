@@ -27,9 +27,20 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 </style>
 </head>
 <body>
-<header><b>SA Investment</b><div style="font-size:12px;opacity:.8">Predračuni</div></header>
+<header><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><div><b>SA Investment</b><div style="font-size:12px;opacity:.8">Predračuni</div></div><div id="topNav" style="display:none"><button class="btn" style="padding:8px 10px" onclick="showArchive()">Arhiva</button> <button class="btn" style="padding:8px 10px" onclick="logout()">Odjava</button></div></div></header>
 
-<div class="wrap app">
+<div id="loginBox" class="wrap" style="max-width:520px;display:none">
+<div class="card"><h2>Prijava</h2>
+<p style="color:#667085">Prijavi se za pristup SA Investment predračunima.</p>
+<label>E-mail</label><input id="loginEmail" type="email">
+<div style="height:10px"></div><label>Lozinka</label><input id="loginPassword" type="password">
+<div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button>
+<div id="loginMsg" style="margin-top:12px;color:#b42318"></div></div></div>
+<div id="archiveBox" class="wrap" style="display:none">
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>Arhiva predračuna</h2><button class="btn secondary" onclick="showEditor()">+ Novi predračun</button></div>
+<input id="archiveSearch" placeholder="Pretraži broj ili kupca..." oninput="renderArchive()">
+<div id="archiveList" style="margin-top:12px"></div></div></div>
+<div class="wrap app" id="editorBox" style="display:none">
  <div class="card">
   <h2>Podaci predračuna</h2>
   <div class="grid3">
@@ -76,7 +87,7 @@ SA Investment je ovlašteni serviser i prodavac VIVAX klima uređaja.</textarea>
  </div>
 
  <div class="actions">
-  <button class="btn secondary" onclick="saveDraft()">Sačuvaj nacrt</button>
+  <button class="btn secondary" onclick="saveOffer()">Sačuvaj predračun</button>
   <button class="btn primary" onclick="showPreview()">Pregled predračuna</button>
   <button class="btn primary" onclick="printOffer()">Kreiraj PDF / štampaj</button>
  </div>
@@ -97,7 +108,12 @@ SA Investment je ovlašteni serviser i prodavac VIVAX klima uređaja.</textarea>
  <div style="text-align:right;margin-top:45px">Ponudu sastavio:<br><br>________________________</div>
 </div></div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script>
+const SUPABASE_URL="https://imkuwwuazgkabyibkfbe.supabase.co";
+const SUPABASE_KEY="sb_publishable_4n0YKSL9MNWgIcjaTpQ2tg_zSf_5nGj";
+const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+
 const $=id=>document.getElementById(id);
 const money=n=>(Number(n)||0).toLocaleString('bs-BA',{minimumFractionDigits:2,maximumFractionDigits:2})+' KM';
 function defaultNo(){
@@ -141,11 +157,56 @@ function saveDraft(){
  const data={offerNo:$('offerNo').value,date:$('date').value,valid:$('valid').value,place:$('place').value,payment:$('payment').value,buyerName:$('buyerName').value,buyerAddress:$('buyerAddress').value,buyerCity:$('buyerCity').value,buyerPhone:$('buyerPhone').value,buyerEmail:$('buyerEmail').value,buyerTax:$('buyerTax').value,note:$('note').value,items:rows().map(r=>({code:r.querySelector('.code').value,name:r.querySelector('.name').value,unit:r.querySelector('.unit').value,qty:r.querySelector('.qty').value,price:r.querySelector('.price').value}))};
  localStorage.setItem('sa_offer_draft',JSON.stringify(data)); alert('Nacrt je sačuvan na ovom uređaju.');
 }
+
+let archiveData=[];
+async function login(){
+ const {error}=await sb.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPassword').value});
+ if(error){$('loginMsg').textContent='Prijava nije uspjela: '+error.message;return}
+ await boot();
+}
+async function logout(){await sb.auth.signOut();location.reload()}
+async function boot(){
+ const {data:{session}}=await sb.auth.getSession();
+ $('loginBox').style.display=session?'none':'block';
+ $('editorBox').style.display=session?'block':'none';
+ $('topNav').style.display=session?'block':'none';
+ if(session) await loadArchive();
+}
+async function saveOffer(){
+ if(!$('buyerName').value.trim()){alert('Unesi ime / naziv kupca.');return}
+ const s=calc();
+ const customer={name:$('buyerName').value.trim(),address:$('buyerAddress').value||null,city:$('buyerCity').value||null,phone:$('buyerPhone').value||null,email:$('buyerEmail').value||null,id_number:$('buyerTax').value||null};
+ let customerId=null;
+ const {data:c,error:ce}=await sb.from('customers').insert(customer).select('id').single();
+ if(ce){alert('Greška pri spremanju kupca: '+ce.message);return}
+ customerId=c.id;
+ const offer={offer_number:$('offerNo').value,offer_date:$('date').value,valid_days:+$('valid').value||5,delivery_place:$('place').value,payment_method:$('payment').value,customer_id:customerId,customer_name:customer.name,customer_address:customer.address,customer_city:customer.city,customer_phone:customer.phone,customer_email:customer.email,customer_id_number:customer.id_number,note:$('note').value,status:'draft',net_amount:s.net,vat_rate:17,vat_amount:s.vat,gross_amount:s.gross};
+ const {data:o,error:oe}=await sb.from('offers').insert(offer).select('id').single();
+ if(oe){alert('Greška pri spremanju predračuna: '+oe.message);return}
+ const items=rows().map((r,i)=>{let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,n=q*p,v=n*.17;return {offer_id:o.id,position:i+1,product_code:r.querySelector('.code').value||null,product_name:r.querySelector('.name').value,unit:r.querySelector('.unit').value,quantity:q,unit_price:p,vat_rate:17,net_amount:n,vat_amount:v,gross_amount:n+v}});
+ const {error:ie}=await sb.from('offer_items').insert(items);
+ if(ie){await sb.from('offers').delete().eq('id',o.id);alert('Greška pri spremanju stavki: '+ie.message);return}
+ alert('Predračun je sačuvan u online arhivu.');
+ await loadArchive(); showArchive();
+}
+async function loadArchive(){
+ const {data,error}=await sb.from('offers').select('*').order('offer_date',{ascending:false}).order('created_at',{ascending:false});
+ if(error){console.error(error);return} archiveData=data||[]; renderArchive();
+}
+function renderArchive(){
+ if(!$('archiveList'))return;
+ const q=($('archiveSearch')?.value||'').toLowerCase();
+ const arr=archiveData.filter(x=>(x.offer_number+' '+x.customer_name).toLowerCase().includes(q));
+ $('archiveList').innerHTML=arr.length?arr.map(x=>`<div style="padding:14px 4px;border-bottom:1px solid #e7ebf0"><b>${x.offer_number}</b> · ${x.customer_name}<br><span style="color:#667085">${new Date(x.offer_date+'T00:00:00').toLocaleDateString('bs-BA')} · ${money(x.gross_amount)}</span></div>`).join(''):'<p style="color:#667085">Nema sačuvanih predračuna.</p>';
+}
+function showArchive(){$('editorBox').style.display='none';$('archiveBox').style.display='block';loadArchive()}
+function showEditor(){$('archiveBox').style.display='none';$('editorBox').style.display='block'}
 (function init(){
  const d=new Date();$('date').value=d.toISOString().slice(0,10);$('offerNo').value=defaultNo();
  addItem({code:'18_ch',name:'VIVAX COOL, klima uređaj ACP-18CH50AERI+ R32',unit:'kom',qty:1,price:1366});
  addItem({code:'wifi',name:'Wifi modul',unit:'kom',qty:1,price:25});
 })();
+boot();
 </script>
 </body>
 </html>
