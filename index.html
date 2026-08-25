@@ -35,7 +35,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <label>E-mail</label><input id="loginEmail" type="email">
 <div style="height:10px"></div><label>Lozinka</label><input id="loginPassword" type="password">
 <div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button>
-<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v2.7</div></div></div>
+<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v2.8</div></div></div>
 <div id="homeBox" class="wrap" style="display:none;max-width:760px">
 <div class="card" style="padding:22px">
  <h2 style="font-size:24px;margin-bottom:8px">Predračuni</h2>
@@ -194,14 +194,29 @@ async function ensureProductsLoaded(){
  }
 }
 async function productSuggestForRow(row,source){
- await ensureProductsLoaded();
  const input=row.querySelector(source==='code'?'.code':'.name');
  const box=source==='code'?row.querySelector('.codeSuggestions'):row.querySelector('.name').parentElement.querySelector('.productSuggestions');
- const q=(input.value||'').trim().toLowerCase();
- const a=productsData.filter(p=>!q||String(source==='code'?(p.code||''):(p.name||'')).toLowerCase().includes(q)||String(p.code||'').toLowerCase().includes(q)||String(p.name||'').toLowerCase().includes(q)).slice(0,8);
+ const q=(input.value||'').trim();
+ let query=sb.from('products').select('*').eq('active',true).order('name').limit(10);
+ if(q){
+   if(source==='code') query=query.ilike('code','%'+q+'%');
+   else query=query.ilike('name','%'+q+'%');
+ }
+ let {data,error}=await query;
+ if(error){console.error('Product autocomplete:',error);box.style.display='none';return}
+ // If exact source search yields nothing, search both code and name.
+ if(q && (!data || !data.length)){
+   ({data,error}=await sb.from('products').select('*').eq('active',true).or(`name.ilike.%${q}%,code.ilike.%${q}%`).order('name').limit(10));
+ }
+ const a=data||[];
+ a.forEach(p=>{const i=productsData.findIndex(x=>x.id===p.id);if(i>=0)productsData[i]=p;else productsData.push(p)});
  row.querySelectorAll('.productSuggestions').forEach(b=>{if(b!==box)b.style.display='none'});
- if(!a.length){box.style.display='none';return}
- box.innerHTML=a.map(p=>`<div onclick="selectProductForRow(this,'${p.id}')" style="padding:10px 12px;border-bottom:1px solid #edf0f3;cursor:pointer"><b>${p.code||'—'} · ${p.name}</b><br><span style="font-size:12px;color:#667085">${p.unit||'kom'} · ${money(p.default_price)} bez PDV · ${money((+p.default_price||0)*1.17)} sa PDV</span></div>`).join('');
+ if(!a.length){
+   box.innerHTML='<div style="padding:11px 12px;color:#667085">Nema artikla u bazi sa ovim nazivom ili šifrom.</div>';
+   box.style.display='block';return;
+ }
+ box.innerHTML=a.map(p=>`<div data-product-id="${p.id}" style="padding:11px 12px;border-bottom:1px solid #edf0f3;cursor:pointer"><b>${p.code||'—'} · ${p.name}</b><br><span style="font-size:12px;color:#667085">${p.unit||'kom'} · ${money(p.default_price)} bez PDV · ${money((+p.default_price||0)*1.17)} sa PDV</span></div>`).join('');
+ box.querySelectorAll('[data-product-id]').forEach(el=>el.addEventListener('click',()=>selectProductForRow(el,el.dataset.productId)));
  box.style.display='block';
 }
 function selectProductForRow(el,id){
@@ -217,8 +232,8 @@ function selectProductForRow(el,id){
 function addItem(data={}){
  const r=document.createElement('div'); r.className='row';
  r.innerHTML=`
- <div style="position:relative"><label>Šifra</label><input class="code" autocomplete="off" value="${data.code||''}" placeholder="Šifra"><div class="codeSuggestions productSuggestions" style="display:none;position:absolute;z-index:30;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
- <div style="position:relative"><label>Naziv / model</label><input class="name" autocomplete="off" value="${data.name||''}" placeholder="Počni kucati artikal..."><div class="productSuggestions" style="display:none;position:absolute;z-index:30;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
+ <div style="position:relative"><label>Šifra</label><input class="code" autocomplete="off" value="${data.code||''}" placeholder="Šifra"><div class="codeSuggestions productSuggestions" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
+ <div style="position:relative"><label>Naziv / model</label><input class="name" autocomplete="off" value="${data.name||''}" placeholder="Počni kucati artikal..."><div class="productSuggestions" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
  <div><label>JM</label><input class="unit" value="${data.unit||'kom'}"></div>
  <div><label>Količina</label><input class="qty" type="number" step="0.01" value="${data.qty||1}"></div>
  <div><label>Cijena bez PDV</label><input class="price" type="number" step="0.01" value="${data.price||0}"></div>
