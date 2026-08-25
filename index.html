@@ -673,7 +673,7 @@ function showDashboard(){
 }
 function renderDashboard(){
  const from=displayToIso($('dashFrom').value),to=displayToIso($('dashTo').value);
- let arr=archiveData.filter(o=>(!from||o.offer_date>=from)&&(!to||o.offer_date<=to));
+ let arr=archiveData.filter(o=>o.status!=='cancelled' && !isOfferDeleted(o) && (!from||o.offer_date>=from)&&(!to||o.offer_date<=to));
  const net=arr.reduce((a,o)=>a+(+o.net_amount||0),0),gross=arr.reduce((a,o)=>a+(+o.gross_amount||0),0);
  $('dashCount').textContent=arr.length;$('dashNet').textContent=money(net);$('dashGross').textContent=money(gross);
  const statusMap={draft:'Nacrt',sent:'Poslan',accepted:'Prihvaćen',rejected:'Odbijen',cancelled:'Otkazan'};
