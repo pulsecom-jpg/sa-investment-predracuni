@@ -451,12 +451,15 @@ async function loadArchive(){
  const {data,error}=await sb.from('offers').select('*').order('offer_date',{ascending:false}).order('created_at',{ascending:false});
  if(error){console.error(error);return} archiveData=data||[]; renderArchive();
 }
+function hasOfferMarker(x,marker){return String(x?.note||'').includes('<!--SA_META:'+marker+'-->')}
+function cleanOfferNote(v){return String(v||'').replace(/\n?<!--SA_META:(?:DELETED|CORRECTED)-->/g,'').trim()}
+function addOfferMarker(v,marker){const clean=cleanOfferNote(v);return clean+(clean?'\n':'')+'<!--SA_META:'+marker+'-->'}
 function renderArchive(){
  if(!$('archiveList'))return;
  const q=($('archiveSearch')?.value||'').toLowerCase();
  const arr=archiveData.filter(x=>(x.offer_number+' '+x.customer_name).toLowerCase().includes(q));
  $('archiveList').innerHTML=arr.length?arr.map(x=>{
-  const deleted=x.status==='deleted', corrected=x.status==='corrected';
+  const deleted=hasOfferMarker(x,'DELETED'), corrected=!deleted&&hasOfferMarker(x,'CORRECTED');
   const bg=deleted?'#fff1f0':corrected?'#fff7e6':'transparent';
   const border=deleted?'#f04438':corrected?'#f79009':'#e7ebf0';
   const badge=deleted?'<span style="display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;background:#f04438;color:white;font-size:11px;font-weight:800">IZBRISAN</span>':corrected?'<span style="display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;background:#f79009;color:white;font-size:11px;font-weight:800">KORIGOVAN</span>':'';
@@ -467,7 +470,8 @@ function renderArchive(){
 
 async function deleteArchivedOffer(id,no){
  if(!confirm('Predračun '+no+' neće biti fizički izbrisan iz baze. Biće označen kao IZBRISAN i prikazan crvenom bojom u arhivi. Nastaviti?'))return;
- const {error}=await sb.from('offers').update({status:'deleted'}).eq('id',id);
+ const row=archiveData.find(x=>x.id===id);
+ const {error}=await sb.from('offers').update({status:'cancelled',note:addOfferMarker(row?.note||'','DELETED')}).eq('id',id);
  if(error){alert('Greška pri označavanju predračuna: '+error.message);return}
  if(currentOfferId===id)currentOfferId=null;
  await loadArchive(); renderArchive();
@@ -493,7 +497,7 @@ async function openArchivedOffer(id){
  $('buyerPhone').value=o.customer_phone||'';
  $('buyerEmail').value=o.customer_email||'';
  $('buyerTax').value=o.customer_id_number||o.customer_vat_number||'';
- $('note').value=o.note||'';$('offerStatus').value=o.status||'draft';
+ $('note').value=cleanOfferNote(o.note||'');$('offerStatus').value=o.status||'draft';
  $('items').innerHTML='';
  (its||[]).forEach(i=>addItem({code:i.product_code||'',name:i.product_name||'',unit:i.unit||'kom',qty:i.quantity,price:i.unit_price,grossprice:(+i.unit_price*1.17).toFixed(2)}));
  if(!(its||[]).length)addItem();
@@ -526,7 +530,7 @@ async function updateOffer(){
  if(!$('buyerName').value.trim()){alert('Unesi ime / naziv kupca.');return}
  const s=calc();
  const offer={offer_number:$('offerNo').value,offer_date:displayToIso($('date').value),valid_days:+$('valid').value||5,delivery_place:$('place').value,payment_method:$('payment').value,customer_name:$('buyerName').value.trim(),customer_address:$('buyerAddress').value||null,customer_city:$('buyerCity').value||null,customer_phone:$('buyerPhone').value||null,customer_email:$('buyerEmail').value||null,customer_id_number:$('buyerTax').value||null,note:$('note').value,status:$('offerStatus').value||'draft',net_amount:s.net,vat_rate:17,vat_amount:s.vat,gross_amount:s.gross};
- offer.status='corrected';
+ offer.note=addOfferMarker(offer.note,'CORRECTED');
  const {error:oe}=await sb.from('offers').update(offer).eq('id',currentOfferId);
  if(oe){alert('Greška pri izmjeni predračuna: '+oe.message);return}
  const {error:de}=await sb.from('offer_items').delete().eq('offer_id',currentOfferId);
