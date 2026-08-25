@@ -471,7 +471,7 @@ function renderArchive(){
 async function deleteArchivedOffer(id,no){
  if(!confirm('Predračun '+no+' neće biti fizički izbrisan iz baze. Biće označen kao IZBRISAN i prikazan crvenom bojom u arhivi. Nastaviti?'))return;
  const row=archiveData.find(x=>x.id===id);
- const {error}=await sb.from('offers').update({status:'cancelled',note:addOfferMarker(row?.note||'','DELETED')}).eq('id',id);
+ const {error}=await sb.from('offers').update({note:addOfferMarker(row?.note||'','DELETED')}).eq('id',id);
  if(error){alert('Greška pri označavanju predračuna: '+error.message);return}
  if(currentOfferId===id)currentOfferId=null;
  await loadArchive(); renderArchive();
