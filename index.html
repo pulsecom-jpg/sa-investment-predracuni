@@ -152,8 +152,10 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
  <h2>Poslani predračuni</h2>
  <div class="items"><table style="margin-top:10px;min-width:700px"><thead><tr><th>Datum</th><th>Broj</th><th>Kupac</th><th>Status</th><th class="right">Bez PDV-a</th><th class="right">Sa PDV-om</th></tr></thead><tbody id="dashRows"></tbody></table></div>
 </div>
-<div class="card"><h2>Vrijednost po kupcima</h2><div id="dashCustomers"></div></div>
+<div class="card"><h2>Vrijednost po kupcima</h2><div style="font-size:13px;color:#667085;margin-bottom:8px">Klikni na kupca za pregled svih njegovih predračuna.</div><div id="dashCustomers"></div></div>
+<div class="card"><h2>Kretanje cijena artikla</h2><div style="font-size:13px;color:#667085;margin-bottom:10px">Pretraži artikal i otvori historiju ponuđenih cijena.</div><input id="dashProductSearch" placeholder="Šifra ili naziv artikla..." oninput="renderDashProductSearch()"><div id="dashProductResults" style="margin-top:10px"></div></div>
 </div>
+<div id="dashDrillBox" class="wrap" style="display:none"><div class="card"><button class="btn secondary" onclick="closeDashboardDrill()">← Nazad na Dashboard</button><h2 id="dashDrillTitle" style="font-size:24px;margin-top:18px"></h2><div id="dashDrillContent"></div></div></div>
 <div id="archiveBox" class="wrap" style="display:none">
 <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>Arhiva predračuna</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn secondary" onclick="showHome()">Početni meni</button><button class="btn secondary" onclick="newOffer()">+ Novi predračun</button></div></div>
 <input id="archiveSearch" placeholder="Pretraži broj ili kupca..." oninput="renderArchive()">
@@ -664,6 +666,7 @@ function syncProductNet(){$('pNet').value=((+$('pGross').value||0)/1.17).toFixed
 async function saveProduct(){const obj={code:$('pCode').value.trim()||null,name:$('pName').value.trim(),unit:$('pUnit').value||'kom',default_price:+$('pNet').value||0,active:true};if(!obj.name){alert('Unesi naziv artikla.');return}const q=editingProductId?sb.from('products').update(obj).eq('id',editingProductId):sb.from('products').insert(obj);const {error}=await q;if(error){alert(error.message);return}$('productForm').style.display='none';await loadProducts()}
 function addProductToOffer(id){const p=productsData.find(x=>x.id===id);if(!p)return;addItem({code:p.code||'',name:p.name,unit:p.unit||'kom',qty:1,price:+p.default_price||0,grossprice:((+p.default_price||0)*1.17).toFixed(2)});showEditor()}
 function showDashboard(){
+ if($('dashDrillBox'))$('dashDrillBox').style.display='none';
  if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';
  $('homeBox').style.display='none';$('archiveBox').style.display='none';$('editorBox').style.display='none';$('dashboardBox').style.display='block';
  if(!$('dashFrom').value){
@@ -682,14 +685,23 @@ function renderDashboard(){
  $('dashRows').innerHTML=arr.length?arr.map(o=>`<tr onclick="openArchivedOffer('${o.id}')" style="cursor:pointer"><td>${displayDate(o.offer_date)}</td><td>${o.offer_number}</td><td>${o.customer_name}</td><td>${statusMap[o.status]||o.status}</td><td class="right">${money(o.net_amount)}</td><td class="right"><b>${money(o.gross_amount)}</b></td></tr>`).join(''):'<tr><td colspan="6" style="text-align:center;color:#667085">Nema predračuna u odabranom periodu.</td></tr>';
  const by={};arr.forEach(o=>{const k=o.customer_name||'Bez kupca';by[k]=(by[k]||0)+(+o.gross_amount||0)});
  const customers=Object.entries(by).sort((a,b)=>b[1]-a[1]);
- $('dashCustomers').innerHTML=customers.length?customers.map(([n,v])=>`<div class="sumline"><span>${n}</span><b>${money(v)}</b></div>`).join(''):'<div style="color:#667085">Nema podataka.</div>';
+ $('dashCustomers').innerHTML=customers.length?customers.map(([n,v])=>`<button class="sumline" style="width:100%;background:none;border:0;cursor:pointer;font:inherit;text-align:left" onclick="openCustomerDrill(${JSON.stringify(n).replace(/"/g,'&quot;')})"><span>${n}</span><b>${money(v)}</b></button>`).join(''):'<div style="color:#667085">Nema podataka.</div>';
+ renderDashProductSearch();
 }
+function dashboardActiveOffers(){const from=displayToIso($('dashFrom').value),to=displayToIso($('dashTo').value);return archiveData.filter(o=>o.status!=='cancelled'&&!hasOfferMarker(o,'DELETED')&&(!from||o.offer_date>=from)&&(!to||o.offer_date<=to))}
+function openCustomerDrill(name){const arr=dashboardActiveOffers().filter(o=>(o.customer_name||'Bez kupca')===name);$('dashboardBox').style.display='none';$('dashDrillBox').style.display='block';$('dashDrillTitle').textContent='Predračuni kupca: '+name;const sm={draft:'Nacrt',sent:'Poslan',accepted:'Prihvaćen',rejected:'Odbijen',cancelled:'Otkazan'};$('dashDrillContent').innerHTML=`<div class="items"><table style="margin-top:10px;min-width:650px"><thead><tr><th>Datum</th><th>Broj</th><th>Status</th><th class="right">Bez PDV-a</th><th class="right">Sa PDV-om</th></tr></thead><tbody>${arr.map(o=>`<tr onclick="openArchivedOffer('${o.id}')" style="cursor:pointer"><td>${displayDate(o.offer_date)}</td><td><b>${o.offer_number}</b></td><td>${sm[o.status]||o.status}</td><td class="right">${money(o.net_amount)}</td><td class="right"><b>${money(o.gross_amount)}</b></td></tr>`).join('')}</tbody></table></div>`;window.scrollTo({top:0,behavior:'smooth'})}
+function closeDashboardDrill(){$('dashDrillBox').style.display='none';$('dashboardBox').style.display='block';window.scrollTo({top:0,behavior:'smooth'})}
+function renderDashProductSearch(){const el=$('dashProductResults');if(!el)return;const q=($('dashProductSearch')?.value||'').trim().toLowerCase();if(!q){el.innerHTML='<div style="color:#667085">Počni kucati naziv ili šifru artikla.</div>';return}const matches=productsData.filter(p=>((p.code||'')+' '+(p.name||'')).toLowerCase().includes(q)).slice(0,12);el.innerHTML=matches.length?matches.map(p=>`<button class="sumline" style="width:100%;background:none;border:0;cursor:pointer;font:inherit;text-align:left" onclick="openProductPriceDrill('${p.id}')"><span><b>${p.code||''}</b> ${p.name}</span><span>›</span></button>`).join(''):'<div style="color:#667085">Nema artikla u bazi.</div>'}
+async function openProductPriceDrill(id){const p=productsData.find(x=>String(x.id)===String(id));if(!p)return;const offers=dashboardActiveOffers(),ids=offers.map(o=>o.id);let its=[];if(ids.length){const {data,error}=await sb.from('offer_items').select('*').in('offer_id',ids).order('position');if(error){alert('Greška pri učitavanju historije cijena: '+error.message);return}its=(data||[]).filter(i=>(p.code&&i.product_code===p.code)||(!p.code&&i.product_name===p.name))}const om=Object.fromEntries(offers.map(o=>[o.id,o]));its.sort((a,b)=>String(om[b.offer_id]?.offer_date||'').localeCompare(String(om[a.offer_id]?.offer_date||'')));$('dashboardBox').style.display='none';$('dashDrillBox').style.display='block';$('dashDrillTitle').textContent='Kretanje cijene: '+(p.code? p.code+' · ':'')+p.name;$('dashDrillContent').innerHTML=its.length?`<div class="items"><table style="margin-top:10px;min-width:720px"><thead><tr><th>Datum</th><th>Predračun</th><th>Kupac</th><th class="right">Količina</th><th class="right">Cijena bez PDV-a</th><th class="right">Sa PDV-om</th></tr></thead><tbody>${its.map(i=>{const o=om[i.offer_id]||{};return `<tr onclick="openArchivedOffer('${i.offer_id}')" style="cursor:pointer"><td>${displayDate(o.offer_date)}</td><td>${o.offer_number||''}</td><td>${o.customer_name||''}</td><td class="right">${i.quantity}</td><td class="right"><b>${money(i.unit_price)}</b></td><td class="right">${money((+i.unit_price||0)*1.17)}</td></tr>`}).join('')}</tbody></table></div>`:'<div style="color:#667085">Nema historije cijena za ovaj artikal u odabranom periodu.</div>';window.scrollTo({top:0,behavior:'smooth'})}
+
 function showHome(){
+ if($('dashDrillBox'))$('dashDrillBox').style.display='none';
  if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';
  $('homeBox').style.display='block';if($('dashboardBox'))$('dashboardBox').style.display='none';$('archiveBox').style.display='none';$('editorBox').style.display='none';
  window.scrollTo({top:0,behavior:'smooth'});
 }
 function showArchive(){
+ if($('dashDrillBox'))$('dashDrillBox').style.display='none';
  if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';
  $('homeBox').style.display='none';if($('dashboardBox'))$('dashboardBox').style.display='none';$('editorBox').style.display='none';$('archiveBox').style.display='block';loadArchive();
 }
