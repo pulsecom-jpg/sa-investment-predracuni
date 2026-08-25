@@ -23,7 +23,38 @@ textarea{min-height:90px;resize:vertical}.items{overflow-x:auto}.row{display:gri
 .offerTop{display:flex;justify-content:space-between;gap:30px;margin-top:100px}.offerInfo{line-height:1.55}.buyer{border:1px solid #555;padding:30px;min-width:330px;text-align:center;font-weight:700}
 table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{border:1px solid #777;padding:8px}th{text-align:center}.right{text-align:right}.paperTotals{width:55%;margin:45px 0 0 auto}.note{margin-top:30px;font-size:13px;line-height:1.5}
 @media(max-width:650px){.grid,.grid3{grid-template-columns:1fr}.wrap{padding:10px}.card{padding:14px}.paper{padding:22px}.offerTop{margin-top:55px;display:block}.buyer{min-width:0;margin-top:20px}.paperHead{display:block}.company{text-align:left;margin-top:18px}.paperTotals{width:100%}}
-@media print{body{background:white}.app,header{display:none!important}.preview{display:block!important}.paper{box-shadow:none;max-width:none;min-height:0;padding:15mm}}
+@page{size:A4 portrait;margin:0}
+@media print{
+ html,body{width:210mm!important;height:297mm!important;margin:0!important;padding:0!important;background:#fff!important}
+ body{overflow:visible!important}
+ .app,header,#loginBox,#homeBox,#customersBox,#productsBox,#dashboardBox,#archiveBox,#productPicker{display:none!important}
+ .preview{display:block!important;width:210mm!important;margin:0!important;padding:0!important}
+ .paper{width:210mm!important;max-width:210mm!important;min-height:0!important;height:auto!important;margin:0!important;padding:10mm 11mm 8mm!important;box-shadow:none!important;overflow:hidden!important;font-size:9.5pt!important}
+ .paperHead{display:flex!important;justify-content:space-between!important;align-items:flex-start!important;gap:8mm!important}
+ .paperLogo{width:48mm!important;max-height:20mm!important}
+ .company{font-size:7.5pt!important;line-height:1.3!important}
+ .offerTop{display:flex!important;justify-content:space-between!important;gap:8mm!important;margin-top:12mm!important;align-items:stretch!important}
+ .offerInfo{font-size:9pt!important;line-height:1.4!important;flex:1!important}
+ .buyer{min-width:0!important;width:48%!important;padding:5mm 4mm!important;font-size:9pt!important;display:flex!important;align-items:center!important;justify-content:center!important}
+ .paper table{table-layout:fixed!important;width:100%!important;margin-top:8mm!important;font-size:7.5pt!important;line-height:1.2!important}
+ .paper th,.paper td{padding:2mm 1.2mm!important;border:0.25mm solid #666!important;vertical-align:middle!important;overflow-wrap:anywhere!important}
+ .paper th{background:#f2f4f7!important;font-weight:700!important}
+ .paper th:nth-child(1),.paper td:nth-child(1){width:6%!important;text-align:center!important}
+ .paper th:nth-child(2),.paper td:nth-child(2){width:10%!important}
+ .paper th:nth-child(3),.paper td:nth-child(3){width:28%!important}
+ .paper th:nth-child(4),.paper td:nth-child(4){width:7%!important;text-align:center!important}
+ .paper th:nth-child(5),.paper td:nth-child(5){width:7%!important;text-align:center!important}
+ .paper th:nth-child(6),.paper td:nth-child(6){width:12%!important}
+ .paper th:nth-child(7),.paper td:nth-child(7){width:12%!important}
+ .paper th:nth-child(8),.paper td:nth-child(8){width:8%!important}
+ .paper th:nth-child(9),.paper td:nth-child(9){width:10%!important}
+ .paperTotals{width:48%!important;margin:7mm 0 0 auto!important;font-size:8.5pt!important}
+ .paperTotals .sumline{padding:1.6mm 0!important}
+ .paperTotals .grand{font-size:10pt!important}
+ .note{margin-top:6mm!important;font-size:8pt!important;line-height:1.35!important;page-break-inside:avoid!important}
+ .paper,.paperHead,.offerTop,.paperTotals,.note,table,tr{page-break-inside:avoid!important;break-inside:avoid!important}
+}
+
 </style>
 </head>
 <body>
@@ -35,7 +66,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <label>E-mail</label><input id="loginEmail" type="email">
 <div style="height:10px"></div><label>Lozinka</label><input id="loginPassword" type="password">
 <div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button>
-<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v3.0</div></div></div>
+<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v3.1</div></div></div>
 <div id="homeBox" class="wrap" style="display:none;max-width:760px">
 <div class="card" style="padding:22px">
  <h2 style="font-size:24px;margin-bottom:8px">Predračuni</h2>
