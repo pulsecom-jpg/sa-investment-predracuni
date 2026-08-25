@@ -9,7 +9,7 @@
 *{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif;background:var(--bg);color:var(--text)}
 header{background:var(--navy);color:white;padding:18px 16px;position:sticky;top:0;z-index:5}
 header b{font-size:20px}.wrap{max-width:1050px;margin:auto;padding:16px}
-.card{background:white;border:1px solid #e7ebf0;border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 4px 16px #1720330b}
+.card{position:relative;overflow:visible;background:white;border:1px solid #e7ebf0;border-radius:18px;padding:18px;margin-bottom:16px;box-shadow:0 4px 16px #1720330b}
 h2{font-size:18px;margin:0 0 15px}.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 label{display:block;font-size:13px;font-weight:700;color:#475467;margin-bottom:6px}
@@ -35,7 +35,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <label>E-mail</label><input id="loginEmail" type="email">
 <div style="height:10px"></div><label>Lozinka</label><input id="loginPassword" type="password">
 <div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button>
-<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v2.4</div></div></div>
+<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v2.7</div></div></div>
 <div id="homeBox" class="wrap" style="display:none;max-width:760px">
 <div class="card" style="padding:22px">
  <h2 style="font-size:24px;margin-bottom:8px">Predračuni</h2>
@@ -54,7 +54,9 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <div class="grid"><div><label>Pretraga</label><input id="customerSearch" placeholder="Ime, grad, telefon..." oninput="renderCustomers()"></div><div style="align-self:end"><button class="btn primary" onclick="newCustomerForm()">+ Dodaj kupca</button></div></div></div>
 <div id="customerForm" class="card" style="display:none"><h2 id="customerFormTitle">Novi kupac</h2><div class="grid">
 <div><label>Ime / naziv *</label><input id="cName"></div><div><label>Adresa</label><input id="cAddress"></div><div><label>Grad</label><input id="cCity"></div><div><label>Telefon</label><input id="cPhone"></div><div><label>E-mail</label><input id="cEmail"></div><div><label>ID broj</label><input id="cId"></div><div><label>PDV broj</label><input id="cVat"></div></div><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="saveCustomer()">Sačuvaj kupca</button><button class="btn secondary" onclick="$('customerForm').style.display='none'">Odustani</button></div></div>
-<div class="card"><div id="customersList"></div></div></div>
+<div class="card">
+<div style="font-size:13px;color:#667085;margin-bottom:8px">Kod svakog kupca možeš urediti podatke, koristiti ga u predračunu ili ga izbrisati iz baze.</div>
+<div id="customersList"></div></div></div>
 
 <div id="productsBox" class="wrap" style="display:none">
 <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2 style="font-size:24px">Artikli</h2><button class="btn secondary" onclick="showHome()">Početni meni</button></div>
@@ -104,7 +106,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
  <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Kupac</h2><button class="btn secondary" onclick="pickCustomer()">Pronađi postojećeg kupca</button></div>
   <div class="grid">
-   <div style="position:relative"><label>Ime / naziv firme</label><input id="buyerName" placeholder="Počni kucati ime kupca..." autocomplete="off" oninput="customerSuggest()" onfocus="customerSuggest()"><div id="customerSuggestions" style="display:none;position:absolute;z-index:20;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
+   <div style="position:relative"><label>Ime / naziv firme</label><input id="buyerName" placeholder="Počni kucati ime kupca..." autocomplete="off" oninput="customerSuggest()" onfocus="customerSuggest()"><div id="customerSuggestions" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
    <div><label>Adresa</label><input id="buyerAddress" placeholder="Ulica i broj"></div>
    <div><label>Grad</label><input id="buyerCity" placeholder="Sarajevo"></div>
    <div><label>Telefon</label><input id="buyerPhone"></div>
@@ -415,30 +417,56 @@ async function ensureCustomersLoaded(){
  }
 }
 async function customerSuggest(){
- await ensureCustomersLoaded();
- const box=$('customerSuggestions'),q=$('buyerName').value.trim().toLowerCase();
- const a=customersData.filter(c=>!q||[c.name,c.city,c.phone,c.email].join(' ').toLowerCase().includes(q)).slice(0,8);
- if(!a.length){box.style.display='none';return}
- box.innerHTML=a.map(c=>`<div onclick="selectSuggestedCustomer('${c.id}')" style="padding:11px 12px;border-bottom:1px solid #edf0f3;cursor:pointer"><b>${c.name}</b><br><span style="font-size:12px;color:#667085">${c.city||''}${c.phone?' · '+c.phone:''}</span></div>`).join('');
+ const box=$('customerSuggestions');
+ const q=$('buyerName').value.trim();
+ let query=sb.from('customers').select('*').order('name').limit(8);
+ if(q) query=query.ilike('name','%'+q+'%');
+ const {data,error}=await query;
+ if(error){console.error('Customer autocomplete:',error);box.style.display='none';return}
+ const a=data||[];
+ a.forEach(c=>{const i=customersData.findIndex(x=>x.id===c.id);if(i>=0)customersData[i]=c;else customersData.push(c)});
+ if(!a.length){
+   box.innerHTML='<div style="padding:11px 12px;color:#667085">Nema kupca u bazi sa ovim nazivom.</div>';
+   box.style.display='block';return;
+ }
+ box.innerHTML=a.map(c=>`<div data-customer-id="${c.id}" style="padding:12px;border-bottom:1px solid #edf0f3;cursor:pointer"><b>${c.name}</b><br><span style="font-size:12px;color:#667085">${c.address||''}${c.city?' · '+c.city:''}${c.phone?' · '+c.phone:''}</span></div>`).join('');
+ box.querySelectorAll('[data-customer-id]').forEach(el=>el.addEventListener('click',()=>selectSuggestedCustomer(el.dataset.customerId)));
  box.style.display='block';
 }
-function selectSuggestedCustomer(id){
- const c=customersData.find(x=>x.id===id);if(!c)return;
+async function selectSuggestedCustomer(id){
+ let c=customersData.find(x=>x.id===id);
+ if(!c){const {data}=await sb.from('customers').select('*').eq('id',id).single();c=data}
+ if(!c)return;
  $('buyerName').value=c.name||'';$('buyerAddress').value=c.address||'';$('buyerCity').value=c.city||'';$('buyerPhone').value=c.phone||'';$('buyerEmail').value=c.email||'';$('buyerTax').value=c.id_number||c.vat_number||'';
  $('customerSuggestions').style.display='none';
 }
-async function deleteCustomer(id,name){
- if(!confirm(`Izbrisati kupca "${name}" iz baze?\n\nPostojeći predračuni tog kupca ostaju sačuvani u arhivi.`))return;
+async function deleteCustomer(id){
+ const c=customersData.find(x=>x.id===id);
+ const name=c?.name||'ovog kupca';
+ if(!confirm(`Da li sigurno želiš izbrisati kupca "${name}" iz baze kupaca?\n\nPostojeći predračuni ostaju sačuvani u arhivi.`))return;
  const {error}=await sb.from('customers').delete().eq('id',id);
  if(error){alert('Kupca nije moguće izbrisati: '+error.message);return}
- customersData=customersData.filter(c=>c.id!==id);renderCustomers();
+ customersData=customersData.filter(x=>x.id!==id);
+ renderCustomers();
+ alert('Kupac je izbrisan iz baze kupaca.');
 }
 async function loadCustomers(){const {data,error}=await sb.from('customers').select('*').order('name');if(error){alert(error.message);return}customersData=data||[];renderCustomers()}
 function showCustomers(){hideMainViews();$('customersBox').style.display='block';loadCustomers();window.scrollTo({top:0,behavior:'smooth'})}
 function renderCustomers(){
  const q=($('customerSearch')?.value||'').toLowerCase();
  const a=customersData.filter(c=>[c.name,c.city,c.phone,c.email].join(' ').toLowerCase().includes(q));
- $('customersList').innerHTML=a.length?a.map(c=>`<div style="padding:13px 0;border-bottom:1px solid #e7ebf0"><b>${c.name}</b><br><span style="color:#667085">${c.address||''}${c.city?' · '+c.city:''}${c.phone?' · '+c.phone:''}</span><div style="margin-top:8px"><button class="btn secondary" onclick="editCustomer('${c.id}')">Uredi</button> <button class="btn secondary" onclick="useCustomer('${c.id}')">Koristi u predračunu</button> <button class="btn danger" onclick="deleteCustomer('${c.id}','${c.name.replace(/'/g,"&#39;")}')">Izbriši</button></div></div>`).join(''):'<div style="color:#667085">Nema kupaca.</div>';
+ $('customersList').innerHTML=a.length?a.map(c=>`<div style="padding:14px 0;border-bottom:1px solid #e7ebf0">
+   <b>${c.name}</b><br>
+   <span style="color:#667085">${c.address||''}${c.city?' · '+c.city:''}${c.phone?' · '+c.phone:''}</span>
+   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
+    <button class="btn secondary" data-edit-customer="${c.id}">Uredi</button>
+    <button class="btn secondary" data-use-customer="${c.id}">Koristi u predračunu</button>
+    <button class="btn danger" data-delete-customer="${c.id}" style="font-weight:800">🗑 Izbriši kupca</button>
+   </div>
+ </div>`).join(''):'<div style="color:#667085">Nema kupaca.</div>';
+ $('customersList').querySelectorAll('[data-edit-customer]').forEach(b=>b.onclick=()=>editCustomer(b.dataset.editCustomer));
+ $('customersList').querySelectorAll('[data-use-customer]').forEach(b=>b.onclick=()=>useCustomer(b.dataset.useCustomer));
+ $('customersList').querySelectorAll('[data-delete-customer]').forEach(b=>b.onclick=()=>deleteCustomer(b.dataset.deleteCustomer));
 }
 function newCustomerForm(){editingCustomerId=null;['cName','cAddress','cCity','cPhone','cEmail','cId','cVat'].forEach(id=>$(id).value='');$('customerFormTitle').textContent='Novi kupac';$('customerForm').style.display='block'}
 function editCustomer(id){const c=customersData.find(x=>x.id===id);if(!c)return;editingCustomerId=id;$('cName').value=c.name||'';$('cAddress').value=c.address||'';$('cCity').value=c.city||'';$('cPhone').value=c.phone||'';$('cEmail').value=c.email||'';$('cId').value=c.id_number||'';$('cVat').value=c.vat_number||'';$('customerFormTitle').textContent='Uredi kupca';$('customerForm').style.display='block';$('customerForm').scrollIntoView({behavior:'smooth'})}
