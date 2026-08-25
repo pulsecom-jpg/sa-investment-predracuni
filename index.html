@@ -35,7 +35,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <label>E-mail</label><input id="loginEmail" type="email">
 <div style="height:10px"></div><label>Lozinka</label><input id="loginPassword" type="password">
 <div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button>
-<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v1.4</div></div></div>
+<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v1.5</div></div></div>
 <div id="archiveBox" class="wrap" style="display:none">
 <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>Arhiva predračuna</h2><button class="btn secondary" onclick="newOffer()">+ Novi predračun</button></div>
 <input id="archiveSearch" placeholder="Pretraži broj ili kupca..." oninput="renderArchive()">
@@ -181,7 +181,12 @@ async function saveOffer(){
  if(ce){alert('Greška pri spremanju kupca: '+ce.message);return}
  customerId=c.id;
  const offer={offer_number:$('offerNo').value,offer_date:$('date').value,valid_days:+$('valid').value||5,delivery_place:$('place').value,payment_method:$('payment').value,customer_id:customerId,customer_name:customer.name,customer_address:customer.address,customer_city:customer.city,customer_phone:customer.phone,customer_email:customer.email,customer_id_number:customer.id_number,note:$('note').value,status:'draft',net_amount:s.net,vat_rate:17,vat_amount:s.vat,gross_amount:s.gross};
- const {data:o,error:oe}=await sb.from('offers').insert(offer).select('id').single();
+ let {data:o,error:oe}=await sb.from('offers').insert(offer).select('id').single();
+ if(oe && oe.code==='23505'){
+   offer.offer_number=await nextOfferNumber();
+   $('offerNo').value=offer.offer_number;
+   ({data:o,error:oe}=await sb.from('offers').insert(offer).select('id').single());
+ }
  if(oe){alert('Greška pri spremanju predračuna: '+oe.message);return}
  const items=rows().map((r,i)=>{let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,n=q*p,v=n*.17;return {offer_id:o.id,position:i+1,product_code:r.querySelector('.code').value||null,product_name:r.querySelector('.name').value,unit:r.querySelector('.unit').value,quantity:q,unit_price:p,vat_rate:17,net_amount:n,vat_amount:v,gross_amount:n+v}});
  const {error:ie}=await sb.from('offer_items').insert(items);
@@ -264,28 +269,30 @@ async function updateOffer(){
  await loadArchive();
 }
 
-function copyOffer(){
+async function copyOffer(){
  currentOfferId=null;
- $('offerNo').value=nextOfferNumber();
+ $('offerNo').value=await nextOfferNumber();
  $('date').value=new Date().toISOString().slice(0,10);
  ensureEditActions();
  alert('Napravljena je kopija. Dodijeljen je novi broj predračuna. Po potrebi promijeni kupca ili stavke, pa klikni Sačuvaj predračun.');
  window.scrollTo({top:0,behavior:'smooth'});
 }
 
-function nextOfferNumber(){
+async function nextOfferNumber(){
  const d=new Date(),m=String(d.getMonth()+1).padStart(2,'0'),y=d.getFullYear();
+ const {data,error}=await sb.from('offers').select('offer_number');
+ if(error){console.error(error);return '001/'+m+'/'+y}
  let max=0;
- archiveData.forEach(o=>{
+ (data||[]).forEach(o=>{
   const mt=String(o.offer_number||'').match(/^(\d+)\/(\d{2})\/(\d{4})$/);
   if(mt && +mt[2]===+m && +mt[3]===y) max=Math.max(max,+mt[1]);
  });
  return String(max+1).padStart(3,'0')+'/'+m+'/'+y;
 }
 
-function newOffer(){
+async function newOffer(){
  currentOfferId=null;
- $('offerNo').value=nextOfferNumber();
+ $('offerNo').value=await nextOfferNumber();
  $('date').value=new Date().toISOString().slice(0,10);
  $('valid').value=5;$('place').value='Sarajevo';$('payment').value='Virmanski, avansno';
  ['buyerName','buyerAddress','buyerCity','buyerPhone','buyerEmail','buyerTax'].forEach(id=>$(id).value='');
