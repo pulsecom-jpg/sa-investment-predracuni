@@ -55,6 +55,34 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
  .paper,.paperHead,.offerTop,.paperTotals,.note,table,tr{page-break-inside:avoid!important;break-inside:avoid!important}
 }
 
+/* === v6 COMPLETE PROFESSIONAL UI === */
+:root{--navy:#071b2e;--navy2:#0d2940;--accent:#0b8f91;--accent2:#11a8a8;--bg:#eef3f7;--card:#fff;--border:#dce6ed;--ink:#132238;--muted:#718096;--danger:#b42318;--warn:#b76e00}
+body{background:var(--bg);color:var(--ink)}
+.v5side{width:252px;padding:28px 18px;background:linear-gradient(180deg,var(--navy),var(--navy2));box-shadow:8px 0 30px #071b2e12}
+.v5brand{font-size:21px;margin:0 8px 30px}.v5brand small{color:#7fd3d1;font-size:10px;letter-spacing:2px}
+.v5nav button{padding:13px 14px;border-radius:11px;color:#c9d6df;transition:.15s}.v5nav button:hover,.v5nav button.active{background:#ffffff14;color:white;transform:translateX(2px)}
+.v5main{margin-left:252px;padding:32px 38px 55px}.v5top{margin-bottom:25px}.v5top h1{font-size:30px;letter-spacing:-.5px}.v5new{background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 8px 18px #0b8f9125}
+.v5quick button,.v5kpi,.v5panel,.card{border:1px solid var(--border);box-shadow:0 5px 20px #071b2e0b;border-radius:15px}.v5quick button{transition:.15s;cursor:pointer}.v5quick button:hover{transform:translateY(-2px);border-color:#b9d4d9}.v5ico{color:var(--accent)}
+.wrap:not(#homeBox):not(#loginBox){max-width:1240px;margin-left:276px;padding:30px 34px}.card{padding:22px;margin-bottom:18px}.card h2{font-size:20px;letter-spacing:-.2px;color:#10243a}
+input,select,textarea{border:1px solid #cbd8e2;border-radius:9px;padding:11px 12px;background:#fbfdfe;transition:.15s}input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);box-shadow:0 0 0 3px #0b8f9114;background:#fff}
+.btn{border-radius:9px;transition:.15s}.primary{background:linear-gradient(135deg,var(--accent),var(--accent2));box-shadow:0 5px 12px #0b8f911c}.secondary{border-color:#c9d8e2;color:#26445d}.secondary:hover{background:#f3f8fa}.danger{border-color:#efc6c2}
+table{border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:11px;overflow:hidden;background:#fff}th{background:#f2f7f9;color:#42566a;font-size:12px;text-transform:uppercase;letter-spacing:.35px}th,td{border:0;border-bottom:1px solid #e7eef2;padding:10px 11px}tr:last-child td{border-bottom:0}tbody tr:hover{background:#f8fbfc}
+.sumline{border-bottom:1px solid #e8eef2!important}.grand{color:#082c3f}.summary{background:#f6fafb;border:1px solid #dbe8ec;border-radius:12px;padding:10px 16px}
+#customersBox>.card:first-child,#productsBox>.card:first-child,#archiveBox>.card:first-child,#dashboardBox>.card:first-child,#editorBox>.card:first-child{border-top:4px solid var(--accent)}
+#customersList>div,#productsList>div{background:#fff}.paper{border-radius:0}
+/* section title chips */
+#productCategoryNav .btn{font-size:13px}#productsList>div>div:first-child{background:#edf6f7!important;color:#0a5d62!important;border-left:4px solid var(--accent);border-radius:8px!important}
+/* archive status emphasis */
+#archiveList .card{box-shadow:none;border-radius:11px}
+/* dashboard */
+#dashboardBox .grid3>.card{border-top:3px solid var(--accent);min-height:110px}#dashboardBox .grid3>.card div[id]{color:#0a5560}
+/* editor */
+#editorBox h2{display:flex;align-items:center;gap:8px}#editorBox h2:before{content:'';display:inline-block;width:5px;height:18px;border-radius:4px;background:var(--accent)}
+/* login */
+#loginBox .card{border-top:5px solid var(--accent);padding:28px;box-shadow:0 18px 55px #071b2e20}#loginBox:before{content:'SA INVESTMENT';display:block;text-align:center;font-weight:900;font-size:25px;color:#0c2940;letter-spacing:.4px;margin-bottom:18px}
+@media(max-width:800px){.v5side{position:sticky;top:0;z-index:60;width:auto;padding:11px 10px}.v5brand{font-size:16px;margin:0 4px 8px}.v5brand small{display:inline;margin-left:7px;font-size:8px}.v5nav{display:flex;overflow-x:auto;gap:5px;padding-bottom:2px}.v5nav button{min-width:70px;padding:8px 5px;font-size:10px;text-align:center}.v5nav span{font-size:16px}.v5main{margin:0;padding:17px 11px 35px}.v5top{margin-bottom:16px}.v5top h1{font-size:23px}.v5top p{font-size:12px}.v5new{padding:10px 11px}.v5quick{gap:9px}.v5quick button{padding:13px}.v5kpi{padding:15px}.v5kpi strong{font-size:21px}.wrap:not(#homeBox):not(#loginBox){margin:0;padding:12px}.card{padding:15px;border-radius:12px}.card h2{font-size:18px}.grid3,.grid{gap:9px}input,select,textarea{font-size:16px}.paper{border-radius:0}}
+@media print{.v5side,.v5shell{display:none!important}}
+
 </style>
 
 <style id="print-fix-v32">
@@ -122,7 +150,7 @@ header{display:none!important}
 <label>E-mail</label><input id="loginEmail" type="email">
 <div style="height:10px"></div><label>Lozinka</label><input id="loginPassword" type="password">
 <div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button>
-<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v5.2 – New UI</div></div></div>
+<div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v6.0 – Professional UI</div></div></div>
 <div id="homeBox" class="wrap" style="display:none;max-width:760px">
 <div class="card" style="padding:22px">
  <h2 style="font-size:24px;margin-bottom:8px">Predračuni</h2>
@@ -143,7 +171,7 @@ header{display:none!important}
 <main class="v5main"><div class="v5top"><div><h1>Pregled poslovanja</h1><p>Predračuni, kupci i artikli na jednom mjestu</p></div><button class="v5new" onclick="newOffer()">＋ Novi predračun</button></div>
 <div class="v5quick"><button onclick="newOffer()"><span class="v5ico">▤</span><b>Novi predračun</b><small>Kreiraj novu ponudu</small></button><button onclick="showArchive()"><span class="v5ico">▣</span><b>Arhiva</b><small>Pregled i korekcije</small></button><button onclick="showCustomers()"><span class="v5ico">♙</span><b>Kupci</b><small>Baza kupaca</small></button><button onclick="showProducts()"><span class="v5ico">❄</span><b>Artikli</b><small>Klime i ugradnja</small></button></div>
 <div class="v5kpis"><div class="v5kpi"><small>Aktivni predračuni</small><strong id="v5Count">—</strong><em>iz baze predračuna</em></div><div class="v5kpi"><small>Vrijednost bez PDV-a</small><strong id="v5Net">—</strong><em>aktivni predračuni</em></div><div class="v5kpi"><small>Vrijednost sa PDV-om</small><strong id="v5Gross">—</strong><em>aktivni predračuni</em></div></div>
-<div class="v5grid"><section class="v5panel"><h3>Brzi pregled</h3><div class="muted">Vizuelni pregled aktivnosti</div><div class="v5fakebars"><i style="height:38%"></i><i style="height:58%"></i><i style="height:47%"></i><i style="height:78%"></i><i style="height:65%"></i><i style="height:88%"></i></div><div style="margin-top:18px"><button class="btn secondary" onclick="showDashboard()">Otvori detaljni Dashboard →</button></div></section><section class="v5panel"><h3>Posljednji predračuni</h3><div class="muted">Najnovije aktivnosti</div><div id="v5Recent" class="v5recent"><div><span>Učitavanje...</span></div></div></section></div>
+<div class="v5grid"><section class="v5panel"><h3>Analitika i kontrola</h3><div class="muted">Brzi pristup postojećim analizama</div><div style="display:grid;gap:10px;margin-top:18px"><button class="btn secondary" style="text-align:left;padding:14px" onclick="showDashboard()"><b>▦ Dashboard predračuna</b><br><small>Period, vrijednost po kupcima i statusi</small></button><button class="btn secondary" style="text-align:left;padding:14px" onclick="showDashboard();setTimeout(()=>document.getElementById('dashProductSearch')?.focus(),150)"><b>↗ Kretanje cijena artikala</b><br><small>Historija cijena kroz predračune</small></button><button class="btn secondary" style="text-align:left;padding:14px" onclick="showArchive()"><b>▣ Arhiva i korekcije</b><br><small>Pregled, korekcije i označavanje</small></button></div></section><section class="v5panel"><h3>Posljednji predračuni</h3><div class="muted">Najnovije aktivnosti</div><div id="v5Recent" class="v5recent"><div><span>Učitavanje...</span></div></div></section></div>
 </main></div>
 <div id="customersBox" class="wrap" style="display:none">
 <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2 style="font-size:24px">Kupci</h2><button class="btn secondary" onclick="showHome()">Početni meni</button></div>
