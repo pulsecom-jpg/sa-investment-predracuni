@@ -632,14 +632,67 @@ async function deleteCustomer(id){
  renderCustomers();
  alert('Kupac je izbrisan iz baze kupaca.');
 }
-async function loadCustomers(){const {data,error}=await sb.from('customers').select('*').order('name');if(error){alert(error.message);return}customersData=data||[];renderCustomers()}
+function normCustomerText(v){return (v||'').toString().trim().replace(/\s+/g,' ').toLocaleLowerCase('bs')}
+function normCustomerNumber(v){return (v||'').toString().replace(/[^0-9A-Za-z]/g,'').toUpperCase()}
+function sameCustomerAddress(a,b){return normCustomerText(a.address)===normCustomerText(b.address)&&normCustomerText(a.city)===normCustomerText(b.city)}
+function customerDuplicateGroups(){
+ const seen=new Set(),groups=[];
+ customersData.forEach(c=>{
+  if(seen.has(String(c.id)))return;
+  const id=normCustomerNumber(c.id_number),vat=normCustomerNumber(c.vat_number),name=normCustomerText(c.name);
+  const legal=!!(id||vat);
+  const matches=customersData.filter(x=>{
+   if(legal){const xi=normCustomerNumber(x.id_number),xv=normCustomerNumber(x.vat_number);return (id&&xi===id)||(vat&&xv===vat)}
+   return !normCustomerNumber(x.id_number)&&!normCustomerNumber(x.vat_number)&&name&&normCustomerText(x.name)===name;
+  });
+  if(matches.length>1){matches.forEach(x=>seen.add(String(x.id)));groups.push({type:legal?'legal':'physical',items:matches})}
+ });
+ return groups;
+}
+async function mergeCustomerRecords(group,master){
+ const others=group.items.filter(x=>String(x.id)!==String(master.id));
+ if(!others.length)return;
+ const ids=others.map(x=>x.id);
+ const merged={
+  name:master.name||others.find(x=>x.name)?.name||'',address:master.address||others.find(x=>x.address)?.address||null,city:master.city||others.find(x=>x.city)?.city||null,
+  phone:master.phone||others.find(x=>x.phone)?.phone||null,email:master.email||others.find(x=>x.email)?.email||null,id_number:master.id_number||others.find(x=>x.id_number)?.id_number||null,vat_number:master.vat_number||others.find(x=>x.vat_number)?.vat_number||null
+ };
+ let r=await sb.from('customers').update(merged).eq('id',master.id);if(r.error){alert('Spajanje kupaca nije uspjelo: '+r.error.message);return}
+ // Prebaci postojeće predračune na glavni customer_id, ali ne mijenjaj historijske podatke ispisane na predračunu.
+ r=await sb.from('offers').update({customer_id:master.id}).in('customer_id',ids);if(r.error){alert('Kupci nisu spojeni jer predračuni nisu mogli biti povezani: '+r.error.message);return}
+ r=await sb.from('customers').delete().in('id',ids);if(r.error){alert('Predračuni su povezani, ali duplikat kupca nije obrisan: '+r.error.message);return}
+ await loadCustomers(false);
+}
+async function reviewCustomerDuplicates(){
+ const groups=customerDuplicateGroups();
+ for(const g of groups){
+  const master=g.items[0],others=g.items.slice(1);
+  if(g.type==='legal'){
+   const conflictId=new Set(g.items.map(x=>normCustomerNumber(x.id_number)).filter(Boolean)).size>1;
+   const conflictVat=new Set(g.items.map(x=>normCustomerNumber(x.vat_number)).filter(Boolean)).size>1;
+   if(conflictId||conflictVat){
+    const txt=g.items.map(x=>`${x.name} | ID: ${x.id_number||'-'} | PDV: ${x.vat_number||'-'} | ${x.address||''} ${x.city||''}`).join('\n');
+    if(!confirm('Pronađena su pravna lica sa podudaranjem ID/PDV broja, ali drugim identifikacionim brojem.\n\n'+txt+'\n\nŽeliš li ih ipak spojiti?'))continue;
+   }
+   await mergeCustomerRecords(g,master);
+  }else{
+   const sameAddr=g.items.every(x=>sameCustomerAddress(master,x));
+   if(!sameAddr){
+    const txt=g.items.map(x=>`${x.name} | ${x.address||'(bez adrese)'}${x.city?' · '+x.city:''}`).join('\n');
+    if(!confirm('Pronađeno je isto ime i prezime, ali adresa nije ista.\n\n'+txt+'\n\nOdobravaš spajanje u jednog kupca?'))continue;
+   }
+   await mergeCustomerRecords(g,master);
+  }
+ }
+}
+async function loadCustomers(checkDuplicates=true){const {data,error}=await sb.from('customers').select('*').order('name');if(error){alert(error.message);return}customersData=data||[];if(checkDuplicates)await reviewCustomerDuplicates();renderCustomers()}
 function showCustomers(){hideMainViews();$('customersBox').style.display='block';loadCustomers();window.scrollTo({top:0,behavior:'smooth'})}
 function renderCustomers(){
  const q=($('customerSearch')?.value||'').toLowerCase();
- const a=customersData.filter(c=>[c.name,c.city,c.phone,c.email].join(' ').toLowerCase().includes(q));
+ const a=customersData.filter(c=>[c.name,c.city,c.phone,c.email,c.id_number,c.vat_number].join(' ').toLowerCase().includes(q));
  $('customersList').innerHTML=a.length?a.map(c=>`<div style="padding:14px 0;border-bottom:1px solid #e7ebf0">
    <b>${c.name}</b><br>
-   <span style="color:#667085">${c.address||''}${c.city?' · '+c.city:''}${c.phone?' · '+c.phone:''}</span>
+   <span style="color:#667085">${c.address||''}${c.city?' · '+c.city:''}${c.phone?' · '+c.phone:''}${c.id_number?' · ID: '+c.id_number:''}${c.vat_number?' · PDV: '+c.vat_number:''}</span>
    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
     <button class="btn secondary" data-edit-customer="${c.id}">Uredi</button>
     <button class="btn secondary" data-use-customer="${c.id}">Koristi u predračunu</button>
@@ -652,7 +705,28 @@ function renderCustomers(){
 }
 function newCustomerForm(){editingCustomerId=null;['cName','cAddress','cCity','cPhone','cEmail','cId','cVat'].forEach(id=>$(id).value='');$('customerFormTitle').textContent='Novi kupac';$('customerForm').style.display='block'}
 function editCustomer(id){const c=customersData.find(x=>x.id===id);if(!c)return;editingCustomerId=id;$('cName').value=c.name||'';$('cAddress').value=c.address||'';$('cCity').value=c.city||'';$('cPhone').value=c.phone||'';$('cEmail').value=c.email||'';$('cId').value=c.id_number||'';$('cVat').value=c.vat_number||'';$('customerFormTitle').textContent='Uredi kupca';$('customerForm').style.display='block';$('customerForm').scrollIntoView({behavior:'smooth'})}
-async function saveCustomer(){const obj={name:$('cName').value.trim(),address:$('cAddress').value||null,city:$('cCity').value||null,phone:$('cPhone').value||null,email:$('cEmail').value||null,id_number:$('cId').value||null,vat_number:$('cVat').value||null};if(!obj.name){alert('Unesi ime / naziv kupca.');return}const q=editingCustomerId?sb.from('customers').update(obj).eq('id',editingCustomerId):sb.from('customers').insert(obj);const {error}=await q;if(error){alert(error.message);return}$('customerForm').style.display='none';await loadCustomers()}
+async function saveCustomer(){
+ const obj={name:$('cName').value.trim(),address:$('cAddress').value||null,city:$('cCity').value||null,phone:$('cPhone').value||null,email:$('cEmail').value||null,id_number:$('cId').value||null,vat_number:$('cVat').value||null};
+ if(!obj.name){alert('Unesi ime / naziv kupca.');return}
+ await ensureCustomersLoaded();
+ const id=normCustomerNumber(obj.id_number),vat=normCustomerNumber(obj.vat_number),name=normCustomerText(obj.name);
+ const dup=customersData.find(c=>String(c.id)!==String(editingCustomerId||'')&&((id&&normCustomerNumber(c.id_number)===id)||(vat&&normCustomerNumber(c.vat_number)===vat)||(!id&&!vat&&!normCustomerNumber(c.id_number)&&!normCustomerNumber(c.vat_number)&&normCustomerText(c.name)===name)));
+ if(dup&&!editingCustomerId){
+  const legal=!!(id||vat);
+  if(legal){
+   const conflict=(id&&dup.id_number&&normCustomerNumber(dup.id_number)!==id)||(vat&&dup.vat_number&&normCustomerNumber(dup.vat_number)!==vat);
+   if(conflict&&!confirm(`Kupac sa istim ID/PDV podudaranjem već postoji:\n${dup.name}\nID: ${dup.id_number||'-'} | PDV: ${dup.vat_number||'-'}\n\nOdobravaš spajanje?`))return;
+  }else if(!sameCustomerAddress(obj,dup)){
+   if(!confirm(`Kupac ${dup.name} već postoji, ali adresa je različita.\nPostojeća: ${dup.address||'-'} ${dup.city||''}\nNova: ${obj.address||'-'} ${obj.city||''}\n\nOdobravaš spajanje?`))return;
+  }
+  const merged={...dup,...obj,id:undefined};
+  const {error}=await sb.from('customers').update({name:merged.name,address:merged.address,city:merged.city,phone:merged.phone,email:merged.email,id_number:merged.id_number,vat_number:merged.vat_number}).eq('id',dup.id);
+  if(error){alert(error.message);return}
+  $('customerForm').style.display='none';await loadCustomers();return;
+ }
+ const query=editingCustomerId?sb.from('customers').update(obj).eq('id',editingCustomerId):sb.from('customers').insert(obj);
+ const {error}=await query;if(error){alert(error.message);return}$('customerForm').style.display='none';await loadCustomers();
+}
 function useCustomer(id){const c=customersData.find(x=>x.id===id);if(!c)return;$('buyerName').value=c.name||'';$('buyerAddress').value=c.address||'';$('buyerCity').value=c.city||'';$('buyerPhone').value=c.phone||'';$('buyerEmail').value=c.email||'';$('buyerTax').value=c.id_number||c.vat_number||'';showEditor()}
 async function pickCustomer(){await loadCustomers();showCustomers()}
 
