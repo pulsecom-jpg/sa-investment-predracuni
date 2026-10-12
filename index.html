@@ -180,7 +180,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
    <div><label>Datum ponude</label><input id="date" type="date"></div>
    <div><label>Važenje ponude (dana)</label><input id="valid" type="number" value="5"></div>
    <div><label>Mjesto isporuke / ugradnje</label><input id="place" value="Sarajevo"></div>
-   <div><label>Način plaćanja</label><select id="payment"><option>Virmanski, avansno</option><option>Virmanski</option><option>Gotovina</option><option>Avansno</option></select></div><div><label>Status predračuna</label><select id="offerStatus"><option value="draft">Nacrt</option><option value="sent">Poslan</option><option value="accepted">Prihvaćen</option><option value="rejected">Odbijen</option><option value="cancelled">Otkazan</option></select></div>
+   <div><label>Način plaćanja</label><input id="payment" list="paymentOptions" value="Virmanski, avansno" placeholder="Odaberi ili upiši vlastiti način plaćanja"><datalist id="paymentOptions"><option value="Virmanski, avansno"><option value="Virmanski"><option value="Gotovina"><option value="Avansno"></datalist></div><div><label>Status predračuna</label><select id="offerStatus"><option value="draft">Nacrt</option><option value="sent">Poslan</option><option value="accepted">Prihvaćen</option><option value="rejected">Odbijen</option><option value="cancelled">Otkazan</option></select></div>
   </div>
  </div>
 
@@ -374,12 +374,19 @@ function addItem(data={}){
  netInput.addEventListener('input',()=>{grossInput.value=((+netInput.value||0)*1.17).toFixed(2);calc()});
  grossInput.addEventListener('input',()=>{netInput.value=((+grossInput.value||0)/1.17).toFixed(2);calc()});
  r.querySelector('.qty').addEventListener('input',calc);
+ const hideProductSuggestions=()=>r.querySelectorAll('.productSuggestions').forEach(b=>b.style.display='none');
  r.querySelector('.name').addEventListener('input',()=>{productSuggestForRow(r,'name');calc()});
  r.querySelector('.name').addEventListener('focus',()=>productSuggestForRow(r,'name'));
- r.querySelector('.name').addEventListener('change',()=>applyExactProductFromInput(r,'name'));
+ r.querySelector('.name').addEventListener('change',()=>{applyExactProductFromInput(r,'name');hideProductSuggestions()});
+ r.querySelector('.name').addEventListener('blur',()=>setTimeout(hideProductSuggestions,180));
  r.querySelector('.code').addEventListener('input',()=>{productSuggestForRow(r,'code');calc()});
  r.querySelector('.code').addEventListener('focus',()=>productSuggestForRow(r,'code'));
- r.querySelector('.code').addEventListener('change',()=>applyExactProductFromInput(r,'code'));
+ r.querySelector('.code').addEventListener('change',()=>{applyExactProductFromInput(r,'code');hideProductSuggestions()});
+ r.querySelector('.code').addEventListener('blur',()=>setTimeout(hideProductSuggestions,180));
+ r.querySelector('.unit').addEventListener('focus',hideProductSuggestions);
+ r.querySelector('.qty').addEventListener('focus',hideProductSuggestions);
+ netInput.addEventListener('focus',hideProductSuggestions);
+ grossInput.addEventListener('focus',hideProductSuggestions);
  r.querySelector('.unit').addEventListener('input',calc);
  calc();
 }
