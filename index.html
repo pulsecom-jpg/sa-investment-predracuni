@@ -180,7 +180,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
    <div><label>Datum ponude</label><input id="date" type="date"></div>
    <div><label>Važenje ponude (dana)</label><input id="valid" type="number" value="5"></div>
    <div><label>Mjesto isporuke / ugradnje</label><input id="place" value="Sarajevo"></div>
-   <div><label>Način plaćanja</label><input id="payment" list="paymentOptions" value="Virmanski, avansno" placeholder="Odaberi ili upiši vlastiti način plaćanja"><datalist id="paymentOptions"><option value="Virmanski, avansno"><option value="Virmanski"><option value="Gotovina"><option value="Avansno"></datalist></div><div><label>Status predračuna</label><select id="offerStatus"><option value="draft">Nacrt</option><option value="sent">Poslan</option><option value="accepted">Prihvaćen</option><option value="rejected">Odbijen</option><option value="cancelled">Otkazan</option></select></div>
+   <div><label>Način plaćanja</label><select id="paymentSelect" onchange="toggleCustomPayment()"><option value="Virmanski, avansno">Virmanski, avansno</option><option value="Virmanski">Virmanski</option><option value="Gotovina">Gotovina</option><option value="Avansno">Avansno</option><option value="__custom__">Drugo - upiši vlastiti način</option></select><input id="paymentCustom" style="display:none;margin-top:8px" placeholder="Upiši vlastiti način plaćanja" oninput="syncCustomPayment()"><input id="payment" type="hidden" value="Virmanski, avansno"></div><div><label>Status predračuna</label><select id="offerStatus"><option value="draft">Nacrt</option><option value="sent">Poslan</option><option value="accepted">Prihvaćen</option><option value="rejected">Odbijen</option><option value="cancelled">Otkazan</option></select></div>
   </div>
  </div>
 
@@ -360,11 +360,23 @@ function pickProductFromModal(id){
  closeProductPicker();
  const rr=rows();if(rr.length)rr[rr.length-1].scrollIntoView({behavior:'smooth',block:'center'});
 }
+function toggleCustomPayment(){
+ const sel=$('paymentSelect'), custom=$('paymentCustom'), hidden=$('payment');
+ if(!sel||!custom||!hidden)return;
+ if(sel.value==='__custom__'){custom.style.display='block';hidden.value=custom.value||'';setTimeout(()=>custom.focus(),0)}
+ else{custom.style.display='none';hidden.value=sel.value}
+}
+function syncCustomPayment(){const hidden=$('payment'),custom=$('paymentCustom');if(hidden&&custom)hidden.value=custom.value}
+function setPaymentValue(v){
+ v=v||'Virmanski, avansno';const sel=$('paymentSelect'),custom=$('paymentCustom'),hidden=$('payment');if(!sel||!custom||!hidden)return;
+ const known=[...sel.options].some(o=>o.value===v&&o.value!=='__custom__');
+ if(known){sel.value=v;custom.value='';custom.style.display='none'}else{sel.value='__custom__';custom.value=v;custom.style.display='block'} hidden.value=v;
+}
 function addItem(data={}){
  const r=document.createElement('div'); r.className='row';
  r.innerHTML=`
- <div style="position:relative"><label>Šifra</label><input class="code" list="productCodeList" autocomplete="off" value="${data.code||''}" placeholder="Šifra"><div class="codeSuggestions productSuggestions" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
- <div style="position:relative"><label>Naziv / model</label><input class="name" list="productNameList" autocomplete="off" value="${data.name||''}" placeholder="Počni kucati artikal..."><div class="productSuggestions" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
+ <div style="position:relative"><label>Šifra</label><input class="code" autocomplete="off" value="${data.code||''}" placeholder="Šifra"><div class="codeSuggestions productSuggestions" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
+ <div style="position:relative"><label>Naziv / model</label><input class="name" autocomplete="off" value="${data.name||''}" placeholder="Počni kucati artikal..."><div class="productSuggestions" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
  <div><label>JM</label><input class="unit" value="${data.unit||'kom'}"></div>
  <div><label>Količina</label><input class="qty" type="number" step="0.01" value="${data.qty||1}"></div>
  <div><label>Cijena bez PDV</label><input class="price" type="number" step="0.01" value="${data.price||0}"></div>
@@ -601,7 +613,7 @@ async function newOffer(){
  currentOfferId=null;
  $('offerNo').value=await nextOfferNumber();
  $('date').value=displayToIso(todayDisplay());
- $('valid').value=5;$('offerStatus').value='draft';$('place').value='Sarajevo';$('payment').value='Virmanski, avansno';
+ $('valid').value=5;$('offerStatus').value='draft';$('place').value='Sarajevo';setPaymentValue('Virmanski, avansno');
  ['buyerName','buyerAddress','buyerCity','buyerPhone','buyerEmail','buyerTax'].forEach(id=>$(id).value='');
  $('items').innerHTML='';addItem();
  ensureEditActions();showEditor();window.scrollTo({top:0,behavior:'smooth'});
