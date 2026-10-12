@@ -319,8 +319,10 @@ async function productSuggestForRow(row,source){
  a.forEach(p=>{const i=productsData.findIndex(x=>x.id===p.id);if(i>=0)productsData[i]=p;else productsData.push(p)});
  row.querySelectorAll('.productSuggestions').forEach(b=>{if(b!==box)b.style.display='none'});
  if(!a.length){
-   box.innerHTML='<div style="padding:11px 12px;color:#667085">Nema artikla u bazi sa ovim nazivom ili šifrom.</div>';
-   box.style.display='block';return;
+   // Kod rucnog unosa ne prikazuj meni/poruku ako artikal nije u bazi.
+   box.innerHTML='';
+   box.style.display='none';
+   return;
  }
  box.innerHTML=a.map(p=>`<div data-product-id="${p.id}" style="padding:11px 12px;border-bottom:1px solid #edf0f3;cursor:pointer"><b>${p.code||'—'} · ${p.name}</b><br><span style="font-size:12px;color:#667085">${p.unit||'kom'} · ${money(p.default_price)} bez PDV · ${money((+p.default_price||0)*1.17)} sa PDV</span></div>`).join('');
  box.querySelectorAll('[data-product-id]').forEach(el=>el.addEventListener('click',()=>selectProductForRow(el,el.dataset.productId)));
