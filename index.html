@@ -551,8 +551,8 @@ function ensureEditActions(){
   box.id='editActions';
   box.className='card';
   box.innerHTML=`<h2>Otvoreni predračun</h2><div class="actions">
-   <button class="btn primary" onclick="updateOffer()">Sačuvaj izmjene</button>
-   <button class="btn secondary" onclick="copyOffer()">Kopiraj kao novi</button>
+   <button class="btn primary" onclick="updateOffer()">💾 Snimi izmjene pod istim brojem</button>
+   <button class="btn secondary" onclick="saveAsNewOffer()">📄 Snimi kao novi predračun</button>
    <button class="btn secondary" onclick="showPreview()">Pregled / PDF</button>
    <button class="btn danger" onclick="deleteCurrentOffer()">Izbriši predračun</button>
    <button class="btn secondary" onclick="showArchive()">Nazad u arhivu</button><button class="btn secondary" onclick="showHome()">Početni meni</button>
@@ -560,6 +560,11 @@ function ensureEditActions(){
   $('editorBox').insertBefore(box,$('editorBox').firstChild);
  }
  box.style.display=currentOfferId?'block':'none';
+ const mainSave=[...document.querySelectorAll('#editorBox .actions button')].find(b=>b.getAttribute('onclick')==='saveOffer()');
+ if(mainSave){
+  if(currentOfferId){mainSave.style.display='none'}
+  else{mainSave.style.display='';mainSave.textContent='Sačuvaj predračun'}
+ }
 }
 
 async function updateOffer(){
@@ -588,14 +593,20 @@ async function deleteCurrentOffer(){
  currentOfferId=null;ensureEditActions();showArchive();
 }
 
-async function copyOffer(){
+async function saveAsNewOffer(){
+ if(!currentOfferId){alert('Nije otvoren postojeći predračun.');return}
+ if(!$('buyerName').value.trim()){alert('Unesi ime / naziv kupca.');return}
+ const oldNo=$('offerNo').value;
+ if(!confirm(`Sačuvati ovu verziju kao NOVI predračun?\n\nPostojeći predračun ${oldNo} ostat će nepromijenjen, a ovoj verziji će biti dodijeljen novi broj.`))return;
  currentOfferId=null;
  $('offerNo').value=await nextOfferNumber();
- $('date').value=displayToIso(todayDisplay());$('offerStatus').value='draft';
+ $('date').value=displayToIso(todayDisplay());
+ $('offerStatus').value='draft';
  ensureEditActions();
- alert('Napravljena je kopija. Dodijeljen je novi broj predračuna. Po potrebi promijeni kupca ili stavke, pa klikni Sačuvaj predračun.');
- window.scrollTo({top:0,behavior:'smooth'});
+ await saveOffer();
 }
+
+async function copyOffer(){return saveAsNewOffer()}
 
 async function nextOfferNumber(){
  const d=new Date(),m=String(d.getMonth()+1).padStart(2,'0'),y=d.getFullYear();
