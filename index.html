@@ -377,6 +377,7 @@ function addItem(data={}){
  r.innerHTML=`
  <div style="position:relative"><label>Šifra</label><input class="code" autocomplete="off" value="${data.code||''}" placeholder="Šifra"><div class="codeSuggestions productSuggestions" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
  <div style="position:relative"><label>Naziv / model</label><input class="name" autocomplete="off" value="${data.name||''}" placeholder="Počni kucati artikal..."><div class="productSuggestions" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
+ <div style="grid-column:1 / -1"><label>Opis / specifikacija artikla (opcionalno)</label><textarea class="description" rows="2" placeholder="Npr. 3,5 kW, Wi-Fi, A++/A+, R32..." style="min-height:64px">${data.description||''}</textarea></div>
  <div><label>JM</label><input class="unit" value="${data.unit||'kom'}"></div>
  <div><label>Količina</label><input class="qty" type="number" step="0.01" value="${data.qty||1}"></div>
  <div><label>Cijena bez PDV</label><input class="price" type="number" step="0.01" value="${data.price||0}"></div>
@@ -418,7 +419,7 @@ function fillPreview(){
  $('pBuyer').innerHTML=`${$('buyerName').value||'Kupac'}<br>${$('buyerAddress').value||''}${$('buyerCity').value?', '+$('buyerCity').value:''}`;
  $('pItems').innerHTML=rows().map((r,i)=>{
   let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,n=q*p,v=n*.17;
-  return `<tr><td>${i+1}</td><td>${r.querySelector('.code').value}</td><td>${r.querySelector('.name').value}</td><td>${r.querySelector('.unit').value}</td><td class="right">${q}</td><td class="right">${money(p).replace(' KM','')}</td><td class="right">${money(n).replace(' KM','')}</td><td class="right">${money(v).replace(' KM','')}</td><td class="right">${money(n+v).replace(' KM','')}</td></tr>`}).join('');
+  return `<tr><td>${i+1}</td><td>${r.querySelector('.code').value}</td><td>${r.querySelector('.name').value}${r.querySelector('.description')?.value.trim()?`<div style="font-size:11px;color:#475467;margin-top:4px;white-space:pre-line">${r.querySelector('.description').value}</div>`:''}</td><td>${r.querySelector('.unit').value}</td><td class="right">${q}</td><td class="right">${money(p).replace(' KM','')}</td><td class="right">${money(n).replace(' KM','')}</td><td class="right">${money(v).replace(' KM','')}</td><td class="right">${money(n+v).replace(' KM','')}</td></tr>`}).join('');
  $('pTotals').innerHTML=`<div class="sumline"><span>Ukupna vrijednost:</span><b>${money(s.net).replace(' KM','')}</b></div><div class="sumline"><span>Osnovica za PDV:</span><b>${money(s.net).replace(' KM','')}</b></div><div class="sumline"><span>Iznos PDV-a (17%):</span><b>${money(s.vat).replace(' KM','')}</b></div><div class="sumline grand"><span>UKUPNO SA PDV-om:</span><span>${money(s.gross).replace(' KM','')}</span></div>`;
  $('pNote').innerHTML=$('note').value.replace(/\n/g,'<br>');
 }
@@ -444,7 +445,7 @@ async function downloadPDF(){
  finally{$('preview').style.display=oldDisplay||'none'}
 }
 function saveDraft(){
- const data={offerNo:$('offerNo').value,date:$('date').value,valid:$('valid').value,place:$('place').value,payment:$('payment').value,buyerName:$('buyerName').value,buyerAddress:$('buyerAddress').value,buyerCity:$('buyerCity').value,buyerPhone:$('buyerPhone').value,buyerEmail:$('buyerEmail').value,buyerTax:$('buyerTax').value,note:$('note').value,items:rows().map(r=>({code:r.querySelector('.code').value,name:r.querySelector('.name').value,unit:r.querySelector('.unit').value,qty:r.querySelector('.qty').value,price:r.querySelector('.price').value}))};
+ const data={offerNo:$('offerNo').value,date:$('date').value,valid:$('valid').value,place:$('place').value,payment:$('payment').value,buyerName:$('buyerName').value,buyerAddress:$('buyerAddress').value,buyerCity:$('buyerCity').value,buyerPhone:$('buyerPhone').value,buyerEmail:$('buyerEmail').value,buyerTax:$('buyerTax').value,note:$('note').value,items:rows().map(r=>({code:r.querySelector('.code').value,name:r.querySelector('.name').value,description:r.querySelector('.description')?.value||'',unit:r.querySelector('.unit').value,qty:r.querySelector('.qty').value,price:r.querySelector('.price').value}))};
  localStorage.setItem('sa_offer_draft',JSON.stringify(data)); alert('Nacrt je sačuvan na ovom uređaju.');
 }
 
@@ -478,7 +479,7 @@ async function saveOffer(){
    ({data:o,error:oe}=await sb.from('offers').insert(offer).select('id').single());
  }
  if(oe){alert('Greška pri spremanju predračuna: '+oe.message);return}
- const items=rows().map((r,i)=>{let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,n=q*p,v=n*.17;return {offer_id:o.id,position:i+1,product_code:r.querySelector('.code').value||null,product_name:r.querySelector('.name').value,unit:r.querySelector('.unit').value,quantity:q,unit_price:p,vat_rate:17,net_amount:n,vat_amount:v,gross_amount:n+v}});
+ const items=rows().map((r,i)=>{let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,n=q*p,v=n*.17;return {offer_id:o.id,position:i+1,product_code:r.querySelector('.code').value||null,product_name:r.querySelector('.name').value,description:r.querySelector('.description')?.value||null,unit:r.querySelector('.unit').value,quantity:q,unit_price:p,vat_rate:17,net_amount:n,vat_amount:v,gross_amount:n+v}});
  const {error:ie}=await sb.from('offer_items').insert(items);
  if(ie){await sb.from('offers').delete().eq('id',o.id);alert('Greška pri spremanju stavki: '+ie.message);return}
  alert('Predračun je sačuvan u online arhivu.');
@@ -536,7 +537,7 @@ async function openArchivedOffer(id){
  $('buyerTax').value=o.customer_id_number||o.customer_vat_number||'';
  $('note').value=cleanOfferNote(o.note||'');$('offerStatus').value=o.status||'draft';
  $('items').innerHTML='';
- (its||[]).forEach(i=>addItem({code:i.product_code||'',name:i.product_name||'',unit:i.unit||'kom',qty:i.quantity,price:i.unit_price,grossprice:(+i.unit_price*1.17).toFixed(2)}));
+ (its||[]).forEach(i=>addItem({code:i.product_code||'',name:i.product_name||'',description:i.description||'',unit:i.unit||'kom',qty:i.quantity,price:i.unit_price,grossprice:(+i.unit_price*1.17).toFixed(2)}));
  if(!(its||[]).length)addItem();
  calc();
  showEditor();
@@ -577,7 +578,7 @@ async function updateOffer(){
  if(oe){alert('Greška pri izmjeni predračuna: '+oe.message);return}
  const {error:de}=await sb.from('offer_items').delete().eq('offer_id',currentOfferId);
  if(de){alert('Predračun je izmijenjen, ali stare stavke nisu mogle biti zamijenjene: '+de.message);return}
- const items=rows().map((r,i)=>{let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,n=q*p,v=n*.17;return {offer_id:currentOfferId,position:i+1,product_code:r.querySelector('.code').value||null,product_name:r.querySelector('.name').value,unit:r.querySelector('.unit').value,quantity:q,unit_price:p,vat_rate:17,net_amount:n,vat_amount:v,gross_amount:n+v}});
+ const items=rows().map((r,i)=>{let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,n=q*p,v=n*.17;return {offer_id:currentOfferId,position:i+1,product_code:r.querySelector('.code').value||null,product_name:r.querySelector('.name').value,description:r.querySelector('.description')?.value||null,unit:r.querySelector('.unit').value,quantity:q,unit_price:p,vat_rate:17,net_amount:n,vat_amount:v,gross_amount:n+v}});
  if(items.length){
   const {error:ie}=await sb.from('offer_items').insert(items);
   if(ie){alert('Greška pri spremanju novih stavki: '+ie.message);return}
@@ -652,13 +653,16 @@ async function customerSuggest(){
  const a=data||[];
  a.forEach(c=>{const i=customersData.findIndex(x=>x.id===c.id);if(i>=0)customersData[i]=c;else customersData.push(c)});
  if(!a.length){
-   box.innerHTML='<div style="padding:11px 12px;color:#667085">Nema kupca u bazi sa ovim nazivom.</div>';
-   box.style.display='block';return;
+   box.innerHTML='';
+   box.style.display='none';
+   return;
  }
  box.innerHTML=a.map(c=>`<div data-customer-id="${c.id}" style="padding:12px;border-bottom:1px solid #edf0f3;cursor:pointer"><b>${c.name}</b><br><span style="font-size:12px;color:#667085">${c.address||''}${c.city?' · '+c.city:''}${c.phone?' · '+c.phone:''}</span></div>`).join('');
  box.querySelectorAll('[data-customer-id]').forEach(el=>el.addEventListener('click',()=>selectSuggestedCustomer(el.dataset.customerId)));
  box.style.display='block';
 }
+$('buyerName')?.addEventListener('blur',()=>setTimeout(()=>{const b=$('customerSuggestions');if(b)b.style.display='none'},180));
+
 async function selectSuggestedCustomer(id){
  let c=customersData.find(x=>x.id===id);
  if(!c){const {data}=await sb.from('customers').select('*').eq('id',id).single();c=data}
