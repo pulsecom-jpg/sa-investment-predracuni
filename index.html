@@ -185,7 +185,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
  </div>
 
  <div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Kupac</h2><button class="btn secondary" onclick="pickCustomer()">Pronađi postojećeg kupca</button></div>
+  <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Kupac</h2><div class="actions" style="margin:0"><button class="btn secondary" onclick="pickCustomer()">Pronađi postojećeg kupca</button><button class="btn secondary" type="button" onclick="archiveCurrentCustomer()">💾 Arhiviraj trenutnog kupca</button></div></div>
   <div class="grid">
    <div style="position:relative"><label>Ime / naziv firme</label><input id="buyerName" placeholder="Počni kucati ime kupca..." autocomplete="off" oninput="customerSuggest()" onfocus="customerSuggest()"><div id="customerSuggestions" style="display:none;position:absolute;z-index:9999;left:0;right:0;top:72px;background:white;border:1px solid #cfd8e3;border-radius:10px;box-shadow:0 8px 24px #0002;max-height:240px;overflow:auto"></div></div>
    <div><label>Adresa</label><input id="buyerAddress" placeholder="Ulica i broj"></div>
@@ -466,6 +466,30 @@ async function boot(){
  $('topNav').style.display=session?'block':'none';
  if(session){await loadArchive();await ensureCustomersLoaded();await ensureProductsLoaded();showHome();}
 }
+async function archiveCurrentCustomer(){
+ const name=$('buyerName').value.trim();
+ if(!name){alert('Prvo unesi ime / naziv kupca.');return}
+ const customer={
+  name:name,
+  address:$('buyerAddress').value.trim()||null,
+  city:$('buyerCity').value.trim()||null,
+  phone:$('buyerPhone').value.trim()||null,
+  email:$('buyerEmail').value.trim()||null,
+  id_number:$('buyerTax').value.trim()||null
+ };
+ if(customer.id_number){
+  const {data:existing,error:ee}=await sb.from('customers').select('id,name').eq('id_number',customer.id_number).limit(1);
+  if(!ee && existing && existing.length){
+   alert('Kupac sa ovim ID / PDV brojem već postoji u arhivi: '+existing[0].name);
+   return;
+  }
+ }
+ const {error}=await sb.from('customers').insert(customer);
+ if(error){alert('Greška pri arhiviranju kupca: '+error.message);return}
+ try{customersLoaded=false;await ensureCustomersLoaded()}catch(_){}
+ alert('Kupac je sačuvan u arhivu kupaca.');
+}
+
 async function saveOffer(){
  if(!$('buyerName').value.trim()){alert('Unesi ime / naziv kupca.');return}
  const s=calc();
