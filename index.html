@@ -237,6 +237,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
   <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showArchive()">▣ Arhiva predračuna</button>
 <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showCustomers()">👥 Kupci</button>
 <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showProducts()">▤ Artikli</button>
+<button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showCompanySettings()">🏢 Postavke firme</button>
 <button id="adminMenuBtn" class="btn secondary" style="display:none;padding:18px;font-size:18px;text-align:left" onclick="showAdmin()">⚙ Admin</button>
   <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left;color:#b42318" onclick="logout()">↪ Odjava</button>
  </div>
@@ -279,6 +280,33 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
   <div id="adminUserMsg" style="margin-top:10px"></div>
  </div>
  <div id="adminUsersList" style="margin-top:14px"></div>
+</div>
+</div>
+<div id="companySettingsBox" class="wrap" style="display:none">
+<div class="card">
+ <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+  <div><h2 style="font-size:24px;margin-bottom:5px">🏢 Postavke firme</h2><div style="color:#667085">Podaci koji će se koristiti na predračunu i PDF-u.</div></div>
+  <button class="btn secondary" onclick="showHome()">Početni meni</button>
+ </div>
+</div>
+<div class="card">
+ <div class="grid">
+  <div><label>Naziv firme</label><input id="csName"></div>
+  <div><label>ID broj</label><input id="csIdNumber"></div>
+  <div><label>PDV broj</label><input id="csVatNumber"></div>
+  <div><label>Adresa</label><input id="csAddress"></div>
+  <div><label>Grad</label><input id="csCity"></div>
+  <div><label>Telefon</label><input id="csPhone"></div>
+  <div><label>E-mail</label><input id="csEmail" type="email"></div>
+  <div><label>Web</label><input id="csWebsite"></div>
+  <div><label>Bankovni račun</label><input id="csBank"></div>
+  <div><label>Logo URL</label><input id="csLogo" placeholder="https://..."></div>
+  <div><label>Ponudu sastavio</label><input id="csPreparedBy"></div>
+ </div>
+ <div style="margin-top:12px"><label>Standardna napomena na novom predračunu</label><textarea id="csOfferNote"></textarea></div>
+ <div style="margin-top:12px"><label>Tekst na dnu predračuna</label><textarea id="csFooter"></textarea></div>
+ <div class="actions" style="margin-top:14px"><button class="btn primary" onclick="saveCompanySettings()">Sačuvaj postavke</button></div>
+ <div id="companySettingsMsg" style="margin-top:10px;color:#667085"></div>
 </div>
 </div>
 <div id="customersBox" class="wrap" style="display:none">
@@ -904,6 +932,7 @@ async function newOffer(){
  $('valid').value=5;$('offerStatus').value='draft';$('place').value='Sarajevo';setPaymentValue('Virmanski, avansno');
  ['buyerName','buyerAddress','buyerCity','buyerPhone','buyerEmail','buyerTax'].forEach(id=>$(id).value='');
  $('items').innerHTML='';addItem();
+ if(currentCompany?.offer_note_default)$('note').value=currentCompany.offer_note_default;
  ensureEditActions();showEditor();window.scrollTo({top:0,behavior:'smooth'});
 }
 
@@ -911,7 +940,7 @@ async function newOffer(){
 let customersData=[],productsData=[],editingCustomerId=null,editingProductId=null;
 
 function hideMainViews(){
- ['homeBox','archiveBox','editorBox','dashboardBox','customersBox','productsBox'].forEach(id=>{if($(id))$(id).style.display='none'});
+ ['homeBox','archiveBox','editorBox','dashboardBox','customersBox','productsBox','companySettingsBox'].forEach(id=>{if($(id))$(id).style.display='none'});
 }
 async function ensureCustomersLoaded(){
  if(!customersData.length){
@@ -1149,16 +1178,41 @@ async function createAdminUser(){
 }
 async function toggleAdminUser(id,active){const {error}=await sb.from('user_profiles').update({is_active:active}).eq('id',id);if(error){alert(error.message);return}await loadAdminData()}
 
+function escVal(v){return v==null?'':String(v)}
+async function showCompanySettings(){
+ hideAdmin();hideMainViews();
+ if(!currentCompany){alert('Firma nije učitana.');return}
+ const c=currentCompany;
+ $('csName').value=escVal(c.name);$('csIdNumber').value=escVal(c.id_number);$('csVatNumber').value=escVal(c.vat_number);
+ $('csAddress').value=escVal(c.address);$('csCity').value=escVal(c.city);$('csPhone').value=escVal(c.phone);
+ $('csEmail').value=escVal(c.email);$('csWebsite').value=escVal(c.website);$('csBank').value=escVal(c.bank_account);
+ $('csLogo').value=escVal(c.logo_url);$('csPreparedBy').value=escVal(c.offer_prepared_by);
+ $('csOfferNote').value=escVal(c.offer_note_default);$('csFooter').value=escVal(c.offer_footer);
+ $('companySettingsMsg').textContent='';
+ $('companySettingsBox').style.display='block';window.scrollTo({top:0,behavior:'smooth'});
+}
+async function saveCompanySettings(){
+ if(!currentCompany?.id)return;
+ const obj={name:$('csName').value.trim(),id_number:$('csIdNumber').value.trim()||null,vat_number:$('csVatNumber').value.trim()||null,
+ address:$('csAddress').value.trim()||null,city:$('csCity').value.trim()||null,phone:$('csPhone').value.trim()||null,email:$('csEmail').value.trim()||null,
+ website:$('csWebsite').value.trim()||null,bank_account:$('csBank').value.trim()||null,logo_url:$('csLogo').value.trim()||null,
+ offer_prepared_by:$('csPreparedBy').value.trim()||null,offer_note_default:$('csOfferNote').value.trim()||null,offer_footer:$('csFooter').value.trim()||null,
+ updated_at:new Date().toISOString()};
+ if(!obj.name){alert('Naziv firme je obavezan.');return}
+ const {data,error}=await sb.from('companies').update(obj).eq('id',currentCompany.id).select('*').single();
+ if(error){$('companySettingsMsg').style.color='#b42318';$('companySettingsMsg').textContent='Greška: '+error.message;return}
+ currentCompany=data;$('companySettingsMsg').style.color='#067647';$('companySettingsMsg').textContent='Postavke firme su sačuvane.';
+}
 function showHome(){
  if($('preview')){$('preview').style.display='none';$('preview').classList.remove('active');}
  if($('dashDrillBox'))$('dashDrillBox').style.display='none';
- if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';hideAdmin();
+ if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';if($('companySettingsBox'))$('companySettingsBox').style.display='none';hideAdmin();
  $('homeBox').style.display='block';if($('dashboardBox'))$('dashboardBox').style.display='none';$('archiveBox').style.display='none';$('editorBox').style.display='none';
  window.scrollTo({top:0,behavior:'smooth'});
 }
 function showArchive(){
  if($('dashDrillBox'))$('dashDrillBox').style.display='none';
- if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';hideAdmin();
+ if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';if($('companySettingsBox'))$('companySettingsBox').style.display='none';hideAdmin();
  $('homeBox').style.display='none';if($('dashboardBox'))$('dashboardBox').style.display='none';$('editorBox').style.display='none';$('archiveBox').style.display='block';loadArchive();
 }
 
