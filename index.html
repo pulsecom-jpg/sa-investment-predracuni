@@ -95,6 +95,55 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 .arc-paper-total{margin-left:auto;width:310px;display:flex;justify-content:space-between;gap:20px;border-top:2px solid #173e6b;margin-top:14px;padding-top:9px;font-size:13px}
 .arc-paper-note{margin-top:14px;padding-top:9px;border-top:1px solid #e1e6ed}
 @media(max-width:700px){.arc-preview-card{position:fixed;left:10px!important;right:10px;top:80px!important;width:auto;max-height:70vh}.arc-paper-info{grid-template-columns:1fr}.arc-paper{min-width:650px}}
+
+.arc-preview-card{
+ display:none !important;
+ position:fixed !important;
+ z-index:30000 !important;
+ left:50% !important;
+ top:50% !important;
+ transform:translate(-50%,-50%) !important;
+ width:min(980px,92vw) !important;
+ max-height:86vh !important;
+ overflow:auto !important;
+ padding:14px !important;
+ background:#eef2f6 !important;
+ border:1px solid #cfd8e3 !important;
+ border-radius:16px !important;
+ box-shadow:0 24px 70px rgba(0,0,0,.35) !important;
+ text-align:left !important;
+}
+.arc-preview-card.show{display:block !important}
+.arc-paper{
+ background:#fff !important;
+ color:#172b4d !important;
+ padding:28px 32px !important;
+ min-width:0 !important;
+ font-size:13px !important;
+ border-radius:10px;
+}
+.arc-paper-head{
+ display:flex;justify-content:space-between;align-items:center;
+ border-bottom:3px solid #173e6b;padding-bottom:12px;margin-bottom:18px;font-size:20px
+}
+.arc-paper-head span{font-size:12px;letter-spacing:1.5px;color:#667085}
+.arc-paper-info{display:grid;grid-template-columns:1fr 1fr;gap:40px;line-height:1.6;margin-bottom:20px}
+.arc-paper-table{width:100%;border-collapse:collapse;table-layout:auto;font-size:12px}
+.arc-paper-table th{background:#f2f5f9;padding:9px 8px;border:1px solid #d9e0e8;text-align:left;white-space:nowrap}
+.arc-paper-table td{padding:9px 8px;border:1px solid #e1e6ed;vertical-align:top;word-break:normal}
+.arc-paper-table th:nth-child(1),.arc-paper-table td:nth-child(1){width:48px;text-align:center}
+.arc-paper-table th:nth-child(2),.arc-paper-table td:nth-child(2){width:105px}
+.arc-paper-table th:nth-child(4),.arc-paper-table td:nth-child(4){width:55px;text-align:center}
+.arc-paper-table th:nth-child(5),.arc-paper-table td:nth-child(5){width:55px;text-align:right}
+.arc-paper-table th:nth-child(6),.arc-paper-table td:nth-child(6){width:100px;text-align:right}
+.arc-paper-table th:nth-child(7),.arc-paper-table td:nth-child(7){width:110px;text-align:right}
+.arc-paper-table td:nth-child(3){min-width:250px}
+.arc-paper-total{margin-left:auto;width:360px;display:flex;justify-content:space-between;gap:20px;border-top:2px solid #173e6b;margin-top:18px;padding-top:11px;font-size:15px}
+.arc-preview-hint{text-align:center;margin-top:16px;color:#667085;font-size:11px}
+@media(max-width:700px){
+ .arc-preview-card{left:3vw!important;right:3vw!important;top:7vh!important;transform:none!important;width:94vw!important;max-height:84vh!important;padding:8px!important}
+ .arc-paper{padding:16px!important;min-width:760px!important}
+}
 </style>
 
 <style id="print-fix-v32">
@@ -586,7 +635,7 @@ function renderArchive(){
  $('archiveList').innerHTML=`<div class="archive-table-wrap"><table class="archive-table"><thead><tr>${th('offer_number','Broj predračuna')}${th('customer_name','Klijent')}${th('offer_date','Datum predračuna')}${th('gross_amount','Iznos')}<th>Akcije</th></tr></thead><tbody>${body||'<tr><td colspan="5" class="arc-empty">Nema sačuvanih predračuna.</td></tr>'}</tbody></table></div><div class="arc-count">Prikazano ${arr.length} predračuna</div>`;
  document.querySelectorAll('.arc-number-preview').forEach(btn=>{
   const card=btn.parentElement.querySelector('.arc-preview-card');
-  const show=async()=>{document.querySelectorAll('.arc-preview-card.show').forEach(c=>{if(c!==card){c.classList.remove('show');c.setAttribute('aria-hidden','true')}});card.classList.add('show');card.setAttribute('aria-hidden','false');if(card.dataset.loaded)return;card.dataset.loaded='1';const id=btn.dataset.id;const {data:o,error:oe}=await sb.from('offers').select('*').eq('id',id).single();const {data:its,error:ie}=await sb.from('offer_items').select('*').eq('offer_id',id).order('position');if(oe||ie){card.innerHTML='<div class="arc-preview-loading">Preview nije moguće učitati.</div>';return}const rows=(its||[]).map((i,k)=>{const q=Number(i.quantity||0),p=Number(i.unit_price||0),n=q*p,v=n*.17;return `<tr><td>${k+1}</td><td>${i.product_code||''}</td><td><b>${i.product_name||''}</b>${i.description?`<div class="arc-item-desc">${i.description}</div>`:''}</td><td>${i.unit||''}</td><td class="num">${q}</td><td class="num">${money(p).replace(' KM','')}</td><td class="num">${money(n+v).replace(' KM','')}</td></tr>`}).join('');card.innerHTML=`<div class="arc-paper"><div class="arc-paper-head"><b>SA INVESTMENT</b><span>PREDRAČUN</span></div><div class="arc-paper-info"><div><b>Ponuda-predračun br.: ${o.offer_number||''}</b><br>Datum: ${displayDate(o.offer_date)}<br>Važenje: ${o.valid_days||''} dana<br>Način plaćanja: ${o.payment_method||''}</div><div><b>${o.customer_name||''}</b><br>${o.customer_address||''}${o.customer_city?', '+o.customer_city:''}<br>${o.customer_id_number?'ID/PDV: '+o.customer_id_number:''}</div></div><table class="arc-paper-table"><thead><tr><th>R.br.</th><th>Šifra</th><th>Naziv / opis</th><th>JM</th><th>Kol.</th><th>Cijena</th><th>Ukupno</th></tr></thead><tbody>${rows}</tbody></table><div class="arc-paper-total"><span>UKUPNO SA PDV-om</span><b>${money(o.gross_amount)}</b></div>${o.note?`<div class="arc-paper-note"><b>Napomena:</b> ${String(o.note).replace(/<!--SA_META:[^>]+-->/g,'').replace(/\n/g,'<br>')}</div>`:''}<div class="arc-preview-hint">Brzi pregled predračuna · sve stavke</div></div>`};
+  const show=async()=>{document.querySelectorAll('.arc-preview-card.show').forEach(c=>{if(c!==card){c.classList.remove('show');c.setAttribute('aria-hidden','true')}});card.classList.add('show');card.setAttribute('aria-hidden','false');if(card.dataset.loaded)return;card.dataset.loaded='1';const id=btn.dataset.id;const {data:o,error:oe}=await sb.from('offers').select('*').eq('id',id).single();const {data:its,error:ie}=await sb.from('offer_items').select('*').eq('offer_id',id).order('position');if(oe||ie){card.innerHTML='<div class="arc-preview-loading">Preview nije moguće učitati.</div>';return}const rows=(its||[]).map((i,k)=>{const q=Number(i.quantity||0),p=Number(i.unit_price||0),n=q*p,v=n*.17;return `<tr><td>${k+1}</td><td>${i.product_code||''}</td><td><b>${i.product_name||''}</b>${i.description?`<div class="arc-item-desc">${i.description}</div>`:''}</td><td>${i.unit||''}</td><td class="num">${q}</td><td class="num">${money(p).replace(' KM','')}</td><td class="num">${money(n+v).replace(' KM','')}</td></tr>`}).join('');card.innerHTML=`<div class="arc-paper"><div class="arc-paper-head"><b>SA INVESTMENT</b><span>PREDRAČUN</span></div><div class="arc-paper-info"><div><b>Ponuda-predračun br.: ${o.offer_number||''}</b><br>Datum: ${displayDate(o.offer_date)}<br>Važenje: ${o.valid_days||''} dana<br>Način plaćanja: ${o.payment_method||''}</div><div><b>${o.customer_name||''}</b><br>${o.customer_address||''}${o.customer_city?', '+o.customer_city:''}<br>${o.customer_id_number?'ID/PDV: '+o.customer_id_number:''}</div></div><table class="arc-paper-table"><thead><tr><th>R.br.</th><th>Šifra</th><th>Naziv / opis</th><th>JM</th><th>Kol.</th><th>Cijena</th><th>Ukupno</th></tr></thead><tbody>${rows}</tbody></table><div class="arc-paper-total"><span>UKUPNO SA PDV-om</span><b>${money(o.gross_amount)}</b></div>${o.note?`<div class="arc-paper-note"><b>Napomena:</b> ${String(o.note).replace(/<!--SA_META:[^>]+-->/g,'').replace(/\n/g,'<br>')}</div>`:''}<div class="arc-preview-hint">Brzi pregled predračuna · sve stavke</div><button type="button" class="arc-preview-close" onclick="this.closest('.arc-preview-card').classList.remove('show')" style="position:sticky;float:right;bottom:0;margin-top:10px;padding:8px 14px;border:1px solid #cfd8e3;border-radius:9px;background:#fff;font-weight:700;cursor:pointer">Zatvori</button></div>`};
   const hide=()=>{card.classList.remove('show');card.setAttribute('aria-hidden','true')};
   btn.addEventListener('mouseenter',show);
   btn.addEventListener('mouseleave',()=>setTimeout(()=>{if(!card.matches(':hover'))hide()},120));
