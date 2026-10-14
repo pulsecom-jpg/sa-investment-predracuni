@@ -408,7 +408,7 @@ function applyExactProductFromInput(row,source){
 }
 async function ensureProductsLoaded(){
  if(!productsData.length){
-  const {data,error}=await sb.from('products').select('*').eq('active',true).order('name');
+  const {data,error}=await sb.from('products').select('*').eq('company_id',requireCompanyId()).eq('active',true).order('name');
   if(!error){productsData=data||[];refreshProductDatalists();}
  }
 }
@@ -416,7 +416,7 @@ async function productSuggestForRow(row,source){
  const input=row.querySelector(source==='code'?'.code':'.name');
  const box=source==='code'?row.querySelector('.codeSuggestions'):row.querySelector('.name').parentElement.querySelector('.productSuggestions');
  const q=(input.value||'').trim();
- let query=sb.from('products').select('*').eq('active',true).order('name').limit(10);
+ let query=sb.from('products').select('*').eq('company_id',requireCompanyId()).eq('active',true).order('name').limit(10);
  if(q){
    if(source==='code') query=query.ilike('code','%'+q+'%');
    else query=query.ilike('name','%'+q+'%');
@@ -451,7 +451,7 @@ function selectProductForRow(el,id){
  calc();
 }
 async function openProductPicker(){
- const {data,error}=await sb.from('products').select('*').eq('active',true).order('name');
+ const {data,error}=await sb.from('products').select('*').eq('company_id',requireCompanyId()).eq('active',true).order('name');
  if(error){alert('Greška pri učitavanju artikala: '+error.message);return}
  productsData=data||[];refreshProductDatalists();
  $('pickerSearch').value='';renderProductPicker();$('productPicker').style.display='block';
@@ -565,6 +565,26 @@ function saveDraft(){
 }
 
 let archiveData=[];
+let currentUserProfile=null;
+let currentCompany=null;
+async function loadCurrentCompany(){
+ const {data:{user}}=await sb.auth.getUser();
+ if(!user)throw new Error('Korisnik nije prijavljen.');
+ const {data:profile,error:pe}=await sb.from('user_profiles').select('id,company_id,full_name,role,is_active').eq('id',user.id).single();
+ if(pe)throw pe;
+ if(!profile?.is_active)throw new Error('Korisnički nalog nije aktivan.');
+ if(!profile.company_id)throw new Error('Korisniku nije dodijeljena firma.');
+ const {data:company,error:ce}=await sb.from('companies').select('*').eq('id',profile.company_id).single();
+ if(ce)throw ce;
+ if(!company?.is_active)throw new Error('Firma nije aktivna.');
+ currentUserProfile=profile;
+ currentCompany=company;
+ return company;
+}
+function requireCompanyId(){
+ if(!currentCompany?.id)throw new Error('Firma nije učitana. Odjavi se i prijavi ponovo.');
+ return currentCompany.id;
+}
 async function login(){
  const {error}=await sb.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPassword').value});
  if(error){$('loginMsg').textContent='Prijava nije uspjela: '+error.message;return}
@@ -576,7 +596,15 @@ async function boot(){
  $('loginBox').style.display=session?'none':'block';
  $('editorBox').style.display='none';
  $('topNav').style.display=session?'block':'none';
- if(session){await loadArchive();await ensureCustomersLoaded();await ensureProductsLoaded();showHome();}
+ if(session){
+  try{
+   await loadCurrentCompany();
+   await loadArchive();await ensureCustomersLoaded();await ensureProductsLoaded();showHome();
+  }catch(e){
+   console.error(e);alert('Nije moguće učitati firmu korisnika: '+e.message);
+   await sb.auth.signOut();location.reload();return;
+  }
+ }
 }
 async function archiveCurrentCustomer(){
  const name=$('buyerName').value.trim();
@@ -590,7 +618,7 @@ async function archiveCurrentCustomer(){
   id_number:$('buyerTax').value.trim()||null
  };
  if(customer.id_number){
-  const {data:existing,error:ee}=await sb.from('customers').select('id,name').eq('id_number',customer.id_number).limit(1);
+  const {data:existing,error:ee}=await sb.from('customers').select('id,name').eq('company_id',requireCompanyId()).eq('id_number',customer.id_number).limit(1);
   if(!ee && existing && existing.length){
    alert('Kupac sa ovim ID / PDV brojem već postoji u arhivi: '+existing[0].name);
    return;
@@ -605,12 +633,12 @@ async function archiveCurrentCustomer(){
 async function saveOffer(){
  if(!$('buyerName').value.trim()){alert('Unesi ime / naziv kupca.');return}
  const s=calc();
- const customer={name:$('buyerName').value.trim(),address:$('buyerAddress').value||null,city:$('buyerCity').value||null,phone:$('buyerPhone').value||null,email:$('buyerEmail').value||null,id_number:$('buyerTax').value||null};
+ const customer={company_id:requireCompanyId(),name:$('buyerName').value.trim(),address:$('buyerAddress').value||null,city:$('buyerCity').value||null,phone:$('buyerPhone').value||null,email:$('buyerEmail').value||null,id_number:$('buyerTax').value||null};
  let customerId=null;
  const {data:c,error:ce}=await sb.from('customers').insert(customer).select('id').single();
  if(ce){alert('Greška pri spremanju kupca: '+ce.message);return}
  customerId=c.id;
- const offer={offer_number:$('offerNo').value,offer_date:displayToIso($('date').value),valid_days:+$('valid').value||5,delivery_place:$('place').value,payment_method:$('payment').value,customer_id:customerId,customer_name:customer.name,customer_address:customer.address,customer_city:customer.city,customer_phone:customer.phone,customer_email:customer.email,customer_id_number:customer.id_number,note:$('note').value,status:$('offerStatus').value||'draft',net_amount:s.net,vat_rate:17,vat_amount:s.vat,gross_amount:s.gross};
+ const offer={company_id:requireCompanyId(),offer_number:$('offerNo').value,offer_date:displayToIso($('date').value),valid_days:+$('valid').value||5,delivery_place:$('place').value,payment_method:$('payment').value,customer_id:customerId,customer_name:customer.name,customer_address:customer.address,customer_city:customer.city,customer_phone:customer.phone,customer_email:customer.email,customer_id_number:customer.id_number,note:$('note').value,status:$('offerStatus').value||'draft',net_amount:s.net,vat_rate:17,vat_amount:s.vat,gross_amount:s.gross};
  let {data:o,error:oe}=await sb.from('offers').insert(offer).select('id').single();
  if(oe && oe.code==='23505'){
    offer.offer_number=await nextOfferNumber();
@@ -625,7 +653,7 @@ async function saveOffer(){
  await loadArchive(); showArchive();
 }
 async function loadArchive(){
- const {data,error}=await sb.from('offers').select('*').order('offer_date',{ascending:false}).order('created_at',{ascending:false});
+ const {data,error}=await sb.from('offers').select('*').eq('company_id',requireCompanyId()).order('offer_date',{ascending:false}).order('created_at',{ascending:false});
  if(error){console.error(error);return} archiveData=data||[]; renderArchive();
 }
 function hasOfferMarker(x,marker){return String(x?.note||'').includes('<!--SA_META:'+marker+'-->')}
@@ -845,14 +873,14 @@ function hideMainViews(){
 }
 async function ensureCustomersLoaded(){
  if(!customersData.length){
-  const {data,error}=await sb.from('customers').select('*').order('name');
+  const {data,error}=await sb.from('customers').select('*').eq('company_id',requireCompanyId()).order('name');
   if(!error)customersData=data||[];
  }
 }
 async function customerSuggest(){
  const box=$('customerSuggestions');
  const q=$('buyerName').value.trim();
- let query=sb.from('customers').select('*').order('name').limit(8);
+ let query=sb.from('customers').select('*').eq('company_id',requireCompanyId()).order('name').limit(8);
  if(q) query=query.ilike('name','%'+q+'%');
  const {data,error}=await query;
  if(error){console.error('Customer autocomplete:',error);box.style.display='none';return}
@@ -939,7 +967,7 @@ async function reviewCustomerDuplicates(){
   }
  }
 }
-async function loadCustomers(checkDuplicates=true){const {data,error}=await sb.from('customers').select('*').order('name');if(error){alert(error.message);return}customersData=data||[];if(checkDuplicates)await reviewCustomerDuplicates();renderCustomers()}
+async function loadCustomers(checkDuplicates=true){const {data,error}=await sb.from('customers').select('*').eq('company_id',requireCompanyId()).order('name');if(error){alert(error.message);return}customersData=data||[];if(checkDuplicates)await reviewCustomerDuplicates();renderCustomers()}
 function showCustomers(){hideMainViews();$('customersBox').style.display='block';loadCustomers();window.scrollTo({top:0,behavior:'smooth'})}
 function renderCustomers(){
  const q=($('customerSearch')?.value||'').toLowerCase();
@@ -974,17 +1002,19 @@ async function saveCustomer(){
    if(!confirm(`Kupac ${dup.name} već postoji, ali adresa je različita.\nPostojeća: ${dup.address||'-'} ${dup.city||''}\nNova: ${obj.address||'-'} ${obj.city||''}\n\nOdobravaš spajanje?`))return;
   }
   const merged={...dup,...obj,id:undefined};
-  const {error}=await sb.from('customers').update({name:merged.name,address:merged.address,city:merged.city,phone:merged.phone,email:merged.email,id_number:merged.id_number,vat_number:merged.vat_number}).eq('id',dup.id);
+  const {error}=await sb.from('customers').update({name:merged.name,address:merged.address,city:merged.city,phone:merged.phone,email:merged.email,id_number:merged.id_number,vat_number:merged.vat_number}).eq('id',dup.id).eq('company_id',requireCompanyId());
   if(error){alert(error.message);return}
   $('customerForm').style.display='none';await loadCustomers();return;
  }
- const query=editingCustomerId?sb.from('customers').update(obj).eq('id',editingCustomerId):sb.from('customers').insert(obj);
+ const query=editingCustomerId
+   ? sb.from('customers').update(obj).eq('id',editingCustomerId).eq('company_id',requireCompanyId())
+   : sb.from('customers').insert({...obj,company_id:requireCompanyId()});
  const {error}=await query;if(error){alert(error.message);return}$('customerForm').style.display='none';await loadCustomers();
 }
 function useCustomer(id){const c=customersData.find(x=>x.id===id);if(!c)return;$('buyerName').value=c.name||'';$('buyerAddress').value=c.address||'';$('buyerCity').value=c.city||'';$('buyerPhone').value=c.phone||'';$('buyerEmail').value=c.email||'';$('buyerTax').value=c.id_number||c.vat_number||'';showEditor()}
 async function pickCustomer(){await loadCustomers();showCustomers()}
 
-async function loadProducts(){const {data,error}=await sb.from('products').select('*').eq('active',true).order('name');if(error){alert(error.message);return}productsData=data||[];productsData.forEach(p=>{try{p._localCategory=localStorage.getItem('productCat:'+p.id)||''}catch(e){}});refreshProductDatalists();renderProducts()}
+async function loadProducts(){const {data,error}=await sb.from('products').select('*').eq('company_id',requireCompanyId()).eq('active',true).order('name');if(error){alert(error.message);return}productsData=data||[];productsData.forEach(p=>{try{p._localCategory=localStorage.getItem('productCat:'+p.id)||''}catch(e){}});refreshProductDatalists();renderProducts()}
 function showProducts(){hideMainViews();$('productsBox').style.display='block';loadProducts();window.scrollTo({top:0,behavior:'smooth'})}
 let productView='all';
 function inferredProductCategory(p){const t=((p.code||'')+' '+(p.name||'')).toUpperCase();if(/UGRAD|MONTA|DEMONTA|SERVIS/.test(t))return 'UGRADNJA';if(/WIFI|WI-FI|MODUL|NOSAČ|NOSAC|CIJEV|KAB(L|E)|KANALIC|KONDENZ|MATERIJAL|DALJINSKI|PUMPA/.test(t))return 'DODATNO';return 'KLIME'}
@@ -997,7 +1027,7 @@ function newProductForm(){editingProductId=null;['pCode','pName','pNet','pGross'
 function editProduct(id){const p=productsData.find(x=>x.id===id);if(!p)return;editingProductId=id;$('pCode').value=p.code||'';$('pName').value=p.name||'';$('pUnit').value=p.unit||'kom';$('pCategory').value=productCategory(p);$('pNet').value=(+p.default_price||0).toFixed(2);$('pGross').value=((+p.default_price||0)*1.17).toFixed(2);$('productFormTitle').textContent='Uredi artikal';$('productForm').style.display='block';$('productForm').scrollIntoView({behavior:'smooth'})}
 function syncProductGross(){$('pGross').value=((+$('pNet').value||0)*1.17).toFixed(2)}
 function syncProductNet(){$('pNet').value=((+$('pGross').value||0)/1.17).toFixed(2)}
-async function saveProduct(){const obj={code:$('pCode').value.trim()||null,name:$('pName').value.trim(),unit:$('pUnit').value||'kom',default_price:+$('pNet').value||0,active:true};if(!obj.name){alert('Unesi naziv artikla.');return}const q=editingProductId?sb.from('products').update(obj).eq('id',editingProductId):sb.from('products').insert(obj);const {data,error}=await q.select();if(error){alert(error.message);return}const saved=(data||[])[0];if(saved){saved._localCategory=$('pCategory').value==='AUTO'?inferredProductCategory(saved):$('pCategory').value;try{localStorage.setItem('productCat:'+saved.id,saved._localCategory)}catch(e){}}$('productForm').style.display='none';await loadProducts()}
+async function saveProduct(){const obj={code:$('pCode').value.trim()||null,name:$('pName').value.trim(),unit:$('pUnit').value||'kom',default_price:+$('pNet').value||0,active:true};if(!obj.name){alert('Unesi naziv artikla.');return}const q=editingProductId?sb.from('products').update(obj).eq('id',editingProductId).eq('company_id',requireCompanyId()):sb.from('products').insert({...obj,company_id:requireCompanyId()});const {data,error}=await q.select();if(error){alert(error.message);return}const saved=(data||[])[0];if(saved){saved._localCategory=$('pCategory').value==='AUTO'?inferredProductCategory(saved):$('pCategory').value;try{localStorage.setItem('productCat:'+saved.id,saved._localCategory)}catch(e){}}$('productForm').style.display='none';await loadProducts()}
 function addProductToOffer(id){const p=productsData.find(x=>x.id===id);if(!p)return;addItem({code:p.code||'',name:p.name,unit:p.unit||'kom',qty:1,price:+p.default_price||0,grossprice:((+p.default_price||0)*1.17).toFixed(2)});showEditor()}
 function showDashboard(){
  if($('dashDrillBox'))$('dashDrillBox').style.display='none';
