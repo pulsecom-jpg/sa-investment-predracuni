@@ -80,6 +80,21 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 .arc-preview-card>div:not(.arc-preview-title):not(.arc-preview-hint){display:flex;justify-content:space-between;gap:16px;padding:4px 0}
 .arc-preview-card span{color:#667085;font-size:12px}.arc-preview-card strong{font-size:12px;text-align:right}
 .arc-preview-hint{margin-top:8px;padding-top:8px;border-top:1px solid #e7ebf0;color:#667085;font-size:11px}
+
+.arc-preview-card{width:min(760px,calc(100vw - 60px));max-height:620px;overflow:auto;padding:10px}
+.arc-preview-loading{padding:24px;text-align:center;color:#667085}
+.arc-paper{background:#fff;color:#172b4d;padding:18px;font-size:12px}
+.arc-paper-head{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #173e6b;padding-bottom:10px;margin-bottom:14px;font-size:17px}
+.arc-paper-head span{font-size:11px;letter-spacing:1.5px;color:#667085}
+.arc-paper-info{display:grid;grid-template-columns:1fr 1fr;gap:24px;line-height:1.55;margin-bottom:14px}
+.arc-paper-table{width:100%;border-collapse:collapse;font-size:11px}
+.arc-paper-table th{background:#f2f5f9;padding:7px;border:1px solid #d9e0e8;text-align:left;height:auto}
+.arc-paper-table td{padding:7px;border:1px solid #e1e6ed;vertical-align:top}
+.arc-paper-table .num{text-align:right;white-space:nowrap}
+.arc-item-desc{font-weight:400;color:#667085;margin-top:3px;white-space:pre-line}
+.arc-paper-total{margin-left:auto;width:310px;display:flex;justify-content:space-between;gap:20px;border-top:2px solid #173e6b;margin-top:14px;padding-top:9px;font-size:13px}
+.arc-paper-note{margin-top:14px;padding-top:9px;border-top:1px solid #e1e6ed}
+@media(max-width:700px){.arc-preview-card{position:fixed;left:10px!important;right:10px;top:80px!important;width:auto;max-height:70vh}.arc-paper-info{grid-template-columns:1fr}.arc-paper{min-width:650px}}
 </style>
 
 <style id="print-fix-v32">
@@ -564,18 +579,14 @@ function renderArchive(){
         <b>${x.offer_number||''}</b>${badge}
       </button>
       <div class="arc-preview-card" data-preview="${x.id}" aria-hidden="true">
-        <div class="arc-preview-title">Predračun ${x.offer_number||''}</div>
-        <div><span>Klijent</span><strong>${x.customer_name||'—'}</strong></div>
-        <div><span>Datum</span><strong>${displayDate(x.offer_date)}</strong></div>
-        <div><span>Iznos</span><strong>${money(x.gross_amount)}</strong></div>
-        <div class="arc-preview-hint">Brzi pregled · bez otvaranja</div>
+        <div class="arc-preview-loading">Učitavam predračun...</div>
       </div>
     </td><td>${x.customer_name||''}</td><td>${displayDate(x.offer_date)}</td><td class="arc-amount">${money(x.gross_amount)}</td><td><div class="actions arc-actions">${actions}</div></td></tr>`;
  }).join('');
  $('archiveList').innerHTML=`<div class="archive-table-wrap"><table class="archive-table"><thead><tr>${th('offer_number','Broj predračuna')}${th('customer_name','Klijent')}${th('offer_date','Datum predračuna')}${th('gross_amount','Iznos')}<th>Akcije</th></tr></thead><tbody>${body||'<tr><td colspan="5" class="arc-empty">Nema sačuvanih predračuna.</td></tr>'}</tbody></table></div><div class="arc-count">Prikazano ${arr.length} predračuna</div>`;
  document.querySelectorAll('.arc-number-preview').forEach(btn=>{
   const card=btn.parentElement.querySelector('.arc-preview-card');
-  const show=()=>{document.querySelectorAll('.arc-preview-card.show').forEach(c=>{if(c!==card){c.classList.remove('show');c.setAttribute('aria-hidden','true')}});card.classList.add('show');card.setAttribute('aria-hidden','false')};
+  const show=async()=>{document.querySelectorAll('.arc-preview-card.show').forEach(c=>{if(c!==card){c.classList.remove('show');c.setAttribute('aria-hidden','true')}});card.classList.add('show');card.setAttribute('aria-hidden','false');if(card.dataset.loaded)return;card.dataset.loaded='1';const id=btn.dataset.id;const {data:o,error:oe}=await sb.from('offers').select('*').eq('id',id).single();const {data:its,error:ie}=await sb.from('offer_items').select('*').eq('offer_id',id).order('position');if(oe||ie){card.innerHTML='<div class="arc-preview-loading">Preview nije moguće učitati.</div>';return}const rows=(its||[]).map((i,k)=>{const q=Number(i.quantity||0),p=Number(i.unit_price||0),n=q*p,v=n*.17;return `<tr><td>${k+1}</td><td>${i.product_code||''}</td><td><b>${i.product_name||''}</b>${i.description?`<div class="arc-item-desc">${i.description}</div>`:''}</td><td>${i.unit||''}</td><td class="num">${q}</td><td class="num">${money(p).replace(' KM','')}</td><td class="num">${money(n+v).replace(' KM','')}</td></tr>`}).join('');card.innerHTML=`<div class="arc-paper"><div class="arc-paper-head"><b>SA INVESTMENT</b><span>PREDRAČUN</span></div><div class="arc-paper-info"><div><b>Ponuda-predračun br.: ${o.offer_number||''}</b><br>Datum: ${displayDate(o.offer_date)}<br>Važenje: ${o.valid_days||''} dana<br>Način plaćanja: ${o.payment_method||''}</div><div><b>${o.customer_name||''}</b><br>${o.customer_address||''}${o.customer_city?', '+o.customer_city:''}<br>${o.customer_id_number?'ID/PDV: '+o.customer_id_number:''}</div></div><table class="arc-paper-table"><thead><tr><th>R.br.</th><th>Šifra</th><th>Naziv / opis</th><th>JM</th><th>Kol.</th><th>Cijena</th><th>Ukupno</th></tr></thead><tbody>${rows}</tbody></table><div class="arc-paper-total"><span>UKUPNO SA PDV-om</span><b>${money(o.gross_amount)}</b></div>${o.note?`<div class="arc-paper-note"><b>Napomena:</b> ${String(o.note).replace(/<!--SA_META:[^>]+-->/g,'').replace(/\n/g,'<br>')}</div>`:''}<div class="arc-preview-hint">Brzi pregled predračuna · sve stavke</div></div>`};
   const hide=()=>{card.classList.remove('show');card.setAttribute('aria-hidden','true')};
   btn.addEventListener('mouseenter',show);
   btn.addEventListener('mouseleave',()=>setTimeout(()=>{if(!card.matches(':hover'))hide()},120));
