@@ -57,15 +57,29 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 
 
 .archive-table-wrap{overflow-x:auto;border:1px solid #e1e7ef;border-radius:14px;background:#fff}
-.archive-table{width:100%;border-collapse:collapse;min-width:0;table-layout:fixed}
+.archive-table{width:100%;border-collapse:collapse;min-width:850px}
 .archive-table th{background:#f2f5f9;color:#183153;text-align:left;padding:13px 14px;border-bottom:1px solid #dce3ec;font-size:13px;white-space:nowrap}
 .archive-table td{padding:12px 14px;border-bottom:1px solid #e7ebf0;vertical-align:middle}
 .archive-table tbody tr:hover{filter:brightness(.985)}
 .archive-table .arc-amount{text-align:right;font-weight:800}.archive-table th:nth-child(4){text-align:right}
 .arc-actions{margin:0;flex-wrap:nowrap}.arc-btn{padding:7px 10px}.arc-count{margin-top:12px;color:#667085;font-size:13px}
-.arc-empty{padding:25px!important;text-align:center;color:#667085}.arc-badge{display:table;margin:5px 0 0;white-space:nowrap;padding:2px 7px;border-radius:999px;color:#fff;font-size:10px;font-weight:800}.arc-badge.del{background:#f04438}.arc-badge.cor{background:#f79009}
-@media screen{.archive-table th,.archive-table td{padding:9px 7px;overflow-wrap:anywhere}.archive-table th:nth-child(1){width:19%}.archive-table th:nth-child(2){width:29%}.archive-table th:nth-child(3){width:16%}.archive-table th:nth-child(4){width:15%}.archive-table th:nth-child(5){width:21%}.archive-table .arc-date{white-space:nowrap;font-size:12px}.archive-table .arc-amount{white-space:nowrap}.arc-actions{flex-wrap:wrap;gap:5px}.arc-btn{padding:6px;font-size:12px}}
-@media screen and (max-width:650px){.archive-table{font-size:11px}.archive-table th,.archive-table td{padding:7px 3px}.archive-table th{font-size:10px;white-space:normal}.archive-table .arc-date{font-size:10px}.archive-table .arc-badge{font-size:8px;padding:3px 5px}.archive-table .arc-btn{font-size:10px;padding:5px 3px}.archive-table th:nth-child(1){width:22%}.archive-table th:nth-child(2){width:24%}.archive-table th:nth-child(3){width:17%}.archive-table th:nth-child(4){width:16%}.archive-table th:nth-child(5){width:21%}}
+.arc-empty{padding:25px!important;text-align:center;color:#667085}.arc-badge{margin-left:7px;padding:2px 7px;border-radius:999px;color:#fff;font-size:10px;font-weight:800}.arc-badge.del{background:#f04438}.arc-badge.cor{background:#f79009}
+
+.archive-table th{vertical-align:middle;height:50px}
+.archive-table th:nth-child(1),.archive-table td:nth-child(1){width:19%}
+.archive-table th:nth-child(2),.archive-table td:nth-child(2){width:30%}
+.archive-table th:nth-child(3),.archive-table td:nth-child(3){width:16%;text-align:center}
+.archive-table th:nth-child(4),.archive-table td:nth-child(4){width:15%;text-align:right}
+.archive-table th:nth-child(5),.archive-table td:nth-child(5){width:20%;text-align:left}
+.arc-number-cell{position:relative}
+.arc-number-preview{appearance:none;border:0;background:transparent;padding:0;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.arc-number-preview:hover,.arc-number-preview:focus{color:#0969da;text-decoration:underline;outline:none}
+.arc-preview-card{display:none;position:absolute;z-index:10020;left:12px;top:calc(100% - 4px);width:320px;padding:14px;background:#fff;border:1px solid #cfd8e3;border-radius:12px;box-shadow:0 12px 30px #0003;color:#183153;text-align:left}
+.arc-preview-card.show{display:block}
+.arc-preview-title{font-weight:800;font-size:15px;padding-bottom:9px;margin-bottom:8px;border-bottom:1px solid #e7ebf0}
+.arc-preview-card>div:not(.arc-preview-title):not(.arc-preview-hint){display:flex;justify-content:space-between;gap:16px;padding:4px 0}
+.arc-preview-card span{color:#667085;font-size:12px}.arc-preview-card strong{font-size:12px;text-align:right}
+.arc-preview-hint{margin-top:8px;padding-top:8px;border-top:1px solid #e7ebf0;color:#667085;font-size:11px}
 </style>
 
 <style id="print-fix-v32">
@@ -545,9 +559,32 @@ function renderArchive(){
   const bg=deleted?'#fff1f0':corrected?'#fff7e6':'#fff';
   const badge=deleted?'<span class="arc-badge del">IZBRISAN</span>':corrected?'<span class="arc-badge cor">KORIGOVAN</span>':'';
   const actions=deleted?`<button class="btn secondary arc-btn" onclick="openArchivedOffer('${x.id}')">Pregled</button>`:`<button class="btn secondary arc-btn" onclick="openArchivedOffer('${x.id}')">Otvori / uredi</button><button class="btn danger arc-btn" onclick="deleteArchivedOffer('${x.id}','${String(x.offer_number||'').replace(/'/g,"\\'")}')">Izbriši</button>`;
-  return `<tr style="background:${bg}"><td><b>${x.offer_number||''}</b>${badge}</td><td>${x.customer_name||''}</td><td class="arc-date">${displayDate(x.offer_date)}</td><td class="arc-amount">${money(x.gross_amount).replace(/\s*KM\s*$/i,'').trim()}</td><td><div class="actions arc-actions">${actions}</div></td></tr>`;
+  return `<tr style="background:${bg}"><td class="arc-number-cell">
+      <button type="button" class="arc-number-preview" data-id="${x.id}" aria-label="Brzi pregled predračuna ${x.offer_number||''}">
+        <b>${x.offer_number||''}</b>${badge}
+      </button>
+      <div class="arc-preview-card" data-preview="${x.id}" aria-hidden="true">
+        <div class="arc-preview-title">Predračun ${x.offer_number||''}</div>
+        <div><span>Klijent</span><strong>${x.customer_name||'—'}</strong></div>
+        <div><span>Datum</span><strong>${displayDate(x.offer_date)}</strong></div>
+        <div><span>Iznos</span><strong>${money(x.gross_amount)}</strong></div>
+        <div class="arc-preview-hint">Brzi pregled · bez otvaranja</div>
+      </div>
+    </td><td>${x.customer_name||''}</td><td>${displayDate(x.offer_date)}</td><td class="arc-amount">${money(x.gross_amount)}</td><td><div class="actions arc-actions">${actions}</div></td></tr>`;
  }).join('');
  $('archiveList').innerHTML=`<div class="archive-table-wrap"><table class="archive-table"><thead><tr>${th('offer_number','Broj predračuna')}${th('customer_name','Klijent')}${th('offer_date','Datum predračuna')}${th('gross_amount','Iznos')}<th>Akcije</th></tr></thead><tbody>${body||'<tr><td colspan="5" class="arc-empty">Nema sačuvanih predračuna.</td></tr>'}</tbody></table></div><div class="arc-count">Prikazano ${arr.length} predračuna</div>`;
+ document.querySelectorAll('.arc-number-preview').forEach(btn=>{
+  const card=btn.parentElement.querySelector('.arc-preview-card');
+  const show=()=>{document.querySelectorAll('.arc-preview-card.show').forEach(c=>{if(c!==card){c.classList.remove('show');c.setAttribute('aria-hidden','true')}});card.classList.add('show');card.setAttribute('aria-hidden','false')};
+  const hide=()=>{card.classList.remove('show');card.setAttribute('aria-hidden','true')};
+  btn.addEventListener('mouseenter',show);
+  btn.addEventListener('mouseleave',()=>setTimeout(()=>{if(!card.matches(':hover'))hide()},120));
+  card.addEventListener('mouseleave',hide);
+  btn.addEventListener('focus',show);
+  btn.addEventListener('blur',()=>setTimeout(()=>{if(!card.matches(':hover'))hide()},120));
+  btn.addEventListener('click',e=>{e.stopPropagation();card.classList.contains('show')?hide():show()});
+ });
+ document.addEventListener('click',e=>{if(!e.target.closest('.arc-number-cell'))document.querySelectorAll('.arc-preview-card.show').forEach(c=>c.classList.remove('show'))},{once:true});
 }
 
 async function deleteArchivedOffer(id,no){
