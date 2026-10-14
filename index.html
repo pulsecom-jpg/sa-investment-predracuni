@@ -237,9 +237,50 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
   <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showArchive()">▣ Arhiva predračuna</button>
 <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showCustomers()">👥 Kupci</button>
 <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showProducts()">▤ Artikli</button>
+<button id="adminMenuBtn" class="btn secondary" style="display:none;padding:18px;font-size:18px;text-align:left" onclick="showAdmin()">⚙ Admin</button>
   <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left;color:#b42318" onclick="logout()">↪ Odjava</button>
  </div>
 </div></div>
+<div id="adminBox" class="wrap" style="display:none">
+<div class="card">
+ <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap">
+  <div><h2 style="font-size:24px;margin-bottom:5px">⚙ Admin panel</h2><div style="color:#667085">Upravljanje firmama i korisnicima platforme</div></div>
+  <button class="btn secondary" onclick="showHome()">Početni meni</button>
+ </div>
+</div>
+<div class="card">
+ <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Firme</h2><button class="btn primary" onclick="newAdminCompany()">+ Nova firma</button></div>
+ <div id="adminCompanyForm" style="display:none;margin-top:16px;border-top:1px solid #e7ebf0;padding-top:16px">
+  <h3 id="adminCompanyFormTitle">Nova firma</h3>
+  <div class="grid">
+   <div><label>Naziv firme *</label><input id="acName"></div><div><label>ID broj</label><input id="acIdNumber"></div>
+   <div><label>PDV broj</label><input id="acVatNumber"></div><div><label>Adresa</label><input id="acAddress"></div>
+   <div><label>Grad</label><input id="acCity"></div><div><label>Kontakt osoba</label><input id="acContact"></div>
+   <div><label>Telefon</label><input id="acPhone"></div><div><label>E-mail</label><input id="acEmail" type="email"></div>
+   <div><label>Web</label><input id="acWebsite"></div><div><label>Bankovni račun</label><input id="acBank"></div>
+   <div><label>Logo URL</label><input id="acLogo"></div><div><label>Status</label><select id="acActive"><option value="true">Aktivna</option><option value="false">Neaktivna</option></select></div>
+  </div>
+  <div style="margin-top:12px"><label>Napomena</label><textarea id="acNotes"></textarea></div>
+  <div class="actions" style="margin-top:14px"><button class="btn primary" onclick="saveAdminCompany()">Sačuvaj firmu</button><button class="btn secondary" onclick="$('adminCompanyForm').style.display='none'">Odustani</button></div>
+ </div>
+ <div id="adminCompaniesList" style="margin-top:14px"></div>
+</div>
+<div class="card">
+ <div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h2>Korisnici</h2><button class="btn primary" onclick="newAdminUser()">+ Novi korisnik</button></div>
+ <div id="adminUserForm" style="display:none;margin-top:16px;border-top:1px solid #e7ebf0;padding-top:16px">
+  <h3>Novi korisnik</h3>
+  <div class="grid">
+   <div><label>Ime i prezime *</label><input id="auName"></div><div><label>E-mail *</label><input id="auEmail" type="email"></div>
+   <div><label>Početna lozinka *</label><input id="auPassword" type="password" placeholder="Najmanje 8 znakova"></div>
+   <div><label>Firma *</label><select id="auCompany"></select></div>
+   <div><label>Uloga *</label><select id="auRole"><option value="user">Korisnik</option><option value="company_admin">Admin firme</option></select></div>
+  </div>
+  <div class="actions" style="margin-top:14px"><button class="btn primary" onclick="createAdminUser()">Kreiraj korisnika</button><button class="btn secondary" onclick="$('adminUserForm').style.display='none'">Odustani</button></div>
+  <div id="adminUserMsg" style="margin-top:10px"></div>
+ </div>
+ <div id="adminUsersList" style="margin-top:14px"></div>
+</div>
+</div>
 <div id="customersBox" class="wrap" style="display:none">
 <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2 style="font-size:24px">Kupci</h2><button class="btn secondary" onclick="showHome()">Početni meni</button></div>
 <div class="grid"><div><label>Pretraga</label><input id="customerSearch" placeholder="Ime, grad, telefon..." oninput="renderCustomers()"></div><div style="align-self:end"><button class="btn primary" onclick="newCustomerForm()">+ Dodaj kupca</button></div></div></div>
@@ -579,6 +620,7 @@ async function loadCurrentCompany(){
  if(!company?.is_active)throw new Error('Firma nije aktivna.');
  currentUserProfile=profile;
  currentCompany=company;
+ const ab=$('adminMenuBtn');if(ab)ab.style.display=profile.role==='super_admin'?'block':'none';
  return company;
 }
 function requireCompanyId(){
@@ -1058,21 +1100,70 @@ function closeDashboardDrill(){$('dashDrillBox').style.display='none';$('dashboa
 function renderDashProductSearch(){const el=$('dashProductResults');if(!el)return;const q=($('dashProductSearch')?.value||'').trim().toLowerCase();if(!q){el.innerHTML='<div style="color:#667085">Počni kucati naziv ili šifru artikla.</div>';return}const matches=productsData.filter(p=>((p.code||'')+' '+(p.name||'')).toLowerCase().includes(q)).slice(0,12);el.innerHTML=matches.length?matches.map(p=>`<button class="sumline" style="width:100%;background:none;border:0;cursor:pointer;font:inherit;text-align:left" onclick="openProductPriceDrill('${p.id}')"><span><b>${p.code||''}</b> ${p.name}</span><span>›</span></button>`).join(''):'<div style="color:#667085">Nema artikla u bazi.</div>'}
 async function openProductPriceDrill(id){const p=productsData.find(x=>String(x.id)===String(id));if(!p)return;const offers=dashboardActiveOffers(),ids=offers.map(o=>o.id);let its=[];if(ids.length){const {data,error}=await sb.from('offer_items').select('*').in('offer_id',ids).order('position');if(error){alert('Greška pri učitavanju historije cijena: '+error.message);return}its=(data||[]).filter(i=>(p.code&&i.product_code===p.code)||(!p.code&&i.product_name===p.name))}const om=Object.fromEntries(offers.map(o=>[o.id,o]));its.sort((a,b)=>String(om[b.offer_id]?.offer_date||'').localeCompare(String(om[a.offer_id]?.offer_date||'')));$('dashboardBox').style.display='none';$('dashDrillBox').style.display='block';$('dashDrillTitle').textContent='Kretanje cijene: '+(p.code? p.code+' · ':'')+p.name;$('dashDrillContent').innerHTML=its.length?`<div class="items"><table style="margin-top:10px;min-width:720px"><thead><tr><th>Datum</th><th>Predračun</th><th>Kupac</th><th class="right">Količina</th><th class="right">Cijena bez PDV-a</th><th class="right">Sa PDV-om</th></tr></thead><tbody>${its.map(i=>{const o=om[i.offer_id]||{};return `<tr onclick="openArchivedOffer('${i.offer_id}')" style="cursor:pointer"><td>${displayDate(o.offer_date)}</td><td>${o.offer_number||''}</td><td>${o.customer_name||''}</td><td class="right">${i.quantity}</td><td class="right"><b>${money(i.unit_price)}</b></td><td class="right">${money((+i.unit_price||0)*1.17)}</td></tr>`}).join('')}</tbody></table></div>`:'<div style="color:#667085">Nema historije cijena za ovaj artikal u odabranom periodu.</div>';window.scrollTo({top:0,behavior:'smooth'})}
 
+let adminCompanies=[];
+let adminProfiles=[];
+let editingAdminCompanyId=null;
+function hideAdmin(){if($('adminBox'))$('adminBox').style.display='none'}
+async function showAdmin(){
+ if(currentUserProfile?.role!=='super_admin'){alert('Samo Super Admin ima pristup Admin panelu.');return}
+ if($('preview')){$('preview').style.display='none';$('preview').classList.remove('active')}
+ ['homeBox','dashboardBox','archiveBox','editorBox','customersBox','productsBox','dashDrillBox'].forEach(id=>{if($(id))$(id).style.display='none'});
+ $('adminBox').style.display='block';await loadAdminData();window.scrollTo({top:0,behavior:'smooth'});
+}
+async function loadAdminData(){
+ const [{data:cs,error:ce},{data:ps,error:pe}]=await Promise.all([
+  sb.from('companies').select('*').order('name'),
+  sb.from('user_profiles').select('id,company_id,full_name,role,is_active,created_at').order('full_name')
+ ]);
+ if(ce){alert('Greška pri učitavanju firmi: '+ce.message);return}
+ if(pe){alert('Greška pri učitavanju korisnika: '+pe.message);return}
+ adminCompanies=cs||[];adminProfiles=ps||[];renderAdminCompanies();renderAdminUsers();refreshAdminCompanySelect();
+}
+function renderAdminCompanies(){
+ const el=$('adminCompaniesList');if(!el)return;
+ el.innerHTML=adminCompanies.length?`<div class="items"><table style="min-width:760px"><thead><tr><th>Firma</th><th>Grad</th><th>ID / PDV</th><th>Status</th><th>Korisnici</th><th>Akcije</th></tr></thead><tbody>${adminCompanies.map(c=>{const n=adminProfiles.filter(p=>p.company_id===c.id).length;return `<tr><td><b>${c.name||''}</b></td><td>${c.city||''}</td><td>${c.id_number||''}${c.vat_number?' / '+c.vat_number:''}</td><td>${c.is_active?'Aktivna':'Neaktivna'}</td><td>${n}</td><td><button class="btn secondary" style="padding:7px 10px" onclick="editAdminCompany('${c.id}')">Uredi</button> <button class="btn secondary" style="padding:7px 10px" onclick="toggleAdminCompany('${c.id}',${!c.is_active})">${c.is_active?'Deaktiviraj':'Aktiviraj'}</button></td></tr>`}).join('')}</tbody></table></div>`:'<div style="color:#667085">Nema firmi.</div>';
+}
+function newAdminCompany(){editingAdminCompanyId=null;['acName','acIdNumber','acVatNumber','acAddress','acCity','acContact','acPhone','acEmail','acWebsite','acBank','acLogo','acNotes'].forEach(id=>$(id).value='');$('acActive').value='true';$('adminCompanyFormTitle').textContent='Nova firma';$('adminCompanyForm').style.display='block';$('adminCompanyForm').scrollIntoView({behavior:'smooth'})}
+function editAdminCompany(id){const c=adminCompanies.find(x=>x.id===id);if(!c)return;editingAdminCompanyId=id;$('acName').value=c.name||'';$('acIdNumber').value=c.id_number||'';$('acVatNumber').value=c.vat_number||'';$('acAddress').value=c.address||'';$('acCity').value=c.city||'';$('acContact').value=c.contact_person||'';$('acPhone').value=c.phone||'';$('acEmail').value=c.email||'';$('acWebsite').value=c.website||'';$('acBank').value=c.bank_account||'';$('acLogo').value=c.logo_url||'';$('acNotes').value=c.notes||'';$('acActive').value=String(c.is_active!==false);$('adminCompanyFormTitle').textContent='Uredi firmu';$('adminCompanyForm').style.display='block';$('adminCompanyForm').scrollIntoView({behavior:'smooth'})}
+async function saveAdminCompany(){
+ const obj={name:$('acName').value.trim(),id_number:$('acIdNumber').value.trim()||null,vat_number:$('acVatNumber').value.trim()||null,address:$('acAddress').value.trim()||null,city:$('acCity').value.trim()||null,contact_person:$('acContact').value.trim()||null,phone:$('acPhone').value.trim()||null,email:$('acEmail').value.trim()||null,website:$('acWebsite').value.trim()||null,bank_account:$('acBank').value.trim()||null,logo_url:$('acLogo').value.trim()||null,notes:$('acNotes').value.trim()||null,is_active:$('acActive').value==='true',updated_at:new Date().toISOString()};
+ if(!obj.name){alert('Unesi naziv firme.');return}
+ const q=editingAdminCompanyId?sb.from('companies').update(obj).eq('id',editingAdminCompanyId):sb.from('companies').insert(obj);
+ const {error}=await q;if(error){alert('Greška: '+error.message);return}$('adminCompanyForm').style.display='none';await loadAdminData();
+}
+async function toggleAdminCompany(id,active){if(!confirm(active?'Aktivirati ovu firmu?':'Deaktivirati ovu firmu? Korisnici te firme se neće moći normalno koristiti aplikacijom.'))return;const {error}=await sb.from('companies').update({is_active:active,updated_at:new Date().toISOString()}).eq('id',id);if(error){alert(error.message);return}await loadAdminData()}
+function refreshAdminCompanySelect(){const el=$('auCompany');if(!el)return;el.innerHTML=adminCompanies.filter(c=>c.is_active).map(c=>`<option value="${c.id}">${c.name}</option>`).join('')}
+function renderAdminUsers(){
+ const el=$('adminUsersList');if(!el)return;const cm=Object.fromEntries(adminCompanies.map(c=>[c.id,c.name]));
+ el.innerHTML=adminProfiles.length?`<div class="items"><table style="min-width:720px"><thead><tr><th>Korisnik</th><th>Firma</th><th>Uloga</th><th>Status</th><th>Akcije</th></tr></thead><tbody>${adminProfiles.map(p=>`<tr><td><b>${p.full_name||'—'}</b></td><td>${cm[p.company_id]||'—'}</td><td>${p.role==='super_admin'?'Super Admin':p.role==='company_admin'?'Admin firme':'Korisnik'}</td><td>${p.is_active?'Aktivan':'Neaktivan'}</td><td>${p.role==='super_admin'?'—':`<button class="btn secondary" style="padding:7px 10px" onclick="toggleAdminUser('${p.id}',${!p.is_active})">${p.is_active?'Deaktiviraj':'Aktiviraj'}</button>`}</td></tr>`).join('')}</tbody></table></div>`:'<div style="color:#667085">Nema korisnika.</div>';
+}
+function newAdminUser(){$('auName').value='';$('auEmail').value='';$('auPassword').value='';$('auRole').value='user';$('adminUserMsg').textContent='';refreshAdminCompanySelect();$('adminUserForm').style.display='block';$('adminUserForm').scrollIntoView({behavior:'smooth'})}
+async function createAdminUser(){
+ const body={full_name:$('auName').value.trim(),email:$('auEmail').value.trim(),password:$('auPassword').value,company_id:$('auCompany').value,role:$('auRole').value};
+ if(!body.full_name||!body.email||!body.password||!body.company_id){alert('Popuni obavezna polja.');return}
+ $('adminUserMsg').textContent='Kreiram korisnika...';
+ const {data,error}=await sb.functions.invoke('admin-create-user',{body});
+ if(error){$('adminUserMsg').style.color='#b42318';$('adminUserMsg').textContent='Greška: '+error.message;return}
+ if(!data?.success){$('adminUserMsg').style.color='#b42318';$('adminUserMsg').textContent='Greška: '+(data?.error||'Korisnik nije kreiran.');return}
+ $('adminUserMsg').style.color='#067647';$('adminUserMsg').textContent='Korisnik je uspješno kreiran.';$('auPassword').value='';await loadAdminData();
+}
+async function toggleAdminUser(id,active){const {error}=await sb.from('user_profiles').update({is_active:active}).eq('id',id);if(error){alert(error.message);return}await loadAdminData()}
+
 function showHome(){
  if($('preview')){$('preview').style.display='none';$('preview').classList.remove('active');}
  if($('dashDrillBox'))$('dashDrillBox').style.display='none';
- if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';
+ if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';hideAdmin();
  $('homeBox').style.display='block';if($('dashboardBox'))$('dashboardBox').style.display='none';$('archiveBox').style.display='none';$('editorBox').style.display='none';
  window.scrollTo({top:0,behavior:'smooth'});
 }
 function showArchive(){
  if($('dashDrillBox'))$('dashDrillBox').style.display='none';
- if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';
+ if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';hideAdmin();
  $('homeBox').style.display='none';if($('dashboardBox'))$('dashboardBox').style.display='none';$('editorBox').style.display='none';$('archiveBox').style.display='block';loadArchive();
 }
 
 function showEditor(){
- if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';$('homeBox').style.display='none';$('archiveBox').style.display='none';$('editorBox').style.display='block'}
+ hideAdmin();if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';$('homeBox').style.display='none';$('archiveBox').style.display='none';$('editorBox').style.display='block'}
 (function init(){
  const d=new Date();$('date').value=displayToIso(todayDisplay());$('offerNo').value=defaultNo();
  addItem({code:'18_ch',name:'VIVAX COOL, klima uređaj ACP-18CH50AERI+ R32',unit:'kom',qty:1,price:1366});
