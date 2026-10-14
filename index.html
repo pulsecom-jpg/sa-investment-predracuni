@@ -55,6 +55,15 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
  .paper,.paperHead,.offerTop,.paperTotals,.note,table,tr{page-break-inside:avoid!important;break-inside:avoid!important}
 }
 
+
+.archive-table-wrap{overflow-x:auto;border:1px solid #e1e7ef;border-radius:14px;background:#fff}
+.archive-table{width:100%;border-collapse:collapse;min-width:850px}
+.archive-table th{background:#f2f5f9;color:#183153;text-align:left;padding:13px 14px;border-bottom:1px solid #dce3ec;font-size:13px;white-space:nowrap}
+.archive-table td{padding:12px 14px;border-bottom:1px solid #e7ebf0;vertical-align:middle}
+.archive-table tbody tr:hover{filter:brightness(.985)}
+.archive-table .arc-amount{text-align:right;font-weight:800}.archive-table th:nth-child(4){text-align:right}
+.arc-actions{margin:0;flex-wrap:nowrap}.arc-btn{padding:7px 10px}.arc-count{margin-top:12px;color:#667085;font-size:13px}
+.arc-empty{padding:25px!important;text-align:center;color:#667085}.arc-badge{margin-left:7px;padding:2px 7px;border-radius:999px;color:#fff;font-size:10px;font-weight:800}.arc-badge.del{background:#f04438}.arc-badge.cor{background:#f79009}
 </style>
 
 <style id="print-fix-v32">
@@ -519,18 +528,24 @@ async function loadArchive(){
 function hasOfferMarker(x,marker){return String(x?.note||'').includes('<!--SA_META:'+marker+'-->')}
 function cleanOfferNote(v){return String(v||'').replace(/\n?<!--SA_META:(?:DELETED|CORRECTED)-->/g,'').trim()}
 function addOfferMarker(v,marker){const clean=cleanOfferNote(v);return clean+(clean?'\n':'')+'<!--SA_META:'+marker+'-->'}
+let archiveSort={key:'offer_date',dir:'desc'};
+function setArchiveSort(key){if(archiveSort.key===key)archiveSort.dir=archiveSort.dir==='asc'?'desc':'asc';else{archiveSort.key=key;archiveSort.dir=key==='customer_name'?'asc':'desc'}renderArchive()}
+function archiveSortIcon(key){return archiveSort.key===key?(archiveSort.dir==='asc'?' ▲':' ▼'):' ↕'}
 function renderArchive(){
  if(!$('archiveList'))return;
- const q=($('archiveSearch')?.value||'').toLowerCase();
- const arr=archiveData.filter(x=>(x.offer_number+' '+x.customer_name).toLowerCase().includes(q));
- $('archiveList').innerHTML=arr.length?arr.map(x=>{
-  const deleted=hasOfferMarker(x,'DELETED'), corrected=!deleted&&hasOfferMarker(x,'CORRECTED');
-  const bg=deleted?'#fff1f0':corrected?'#fff7e6':'transparent';
-  const border=deleted?'#f04438':corrected?'#f79009':'#e7ebf0';
-  const badge=deleted?'<span style="display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;background:#f04438;color:white;font-size:11px;font-weight:800">IZBRISAN</span>':corrected?'<span style="display:inline-block;margin-left:8px;padding:3px 8px;border-radius:999px;background:#f79009;color:white;font-size:11px;font-weight:800">KORIGOVAN</span>':'';
-  const actions=deleted?`<button class="btn secondary" style="padding:8px 11px" onclick="openArchivedOffer('${x.id}')">Pregled</button>`:`<button class="btn secondary" style="padding:8px 11px" onclick="openArchivedOffer('${x.id}')">✏️ Otvori / koriguj</button><button class="btn danger" style="padding:8px 11px" onclick="deleteArchivedOffer('${x.id}','${String(x.offer_number).replace(/'/g,"\\'")}')">🗑 Označi izbrisanim</button>`;
-  return `<div style="padding:14px 12px;margin-bottom:7px;border-left:5px solid ${border};border-bottom:1px solid #e7ebf0;background:${bg};border-radius:8px"><b>${x.offer_number}</b>${badge} · ${x.customer_name}<br><span style="color:#667085">${displayDate(x.offer_date)} · ${money(x.gross_amount)}</span><div class="actions" style="margin-top:9px">${actions}</div></div>`;
- }).join(''):'<p style="color:#667085">Nema sačuvanih predračuna.</p>';
+ const q=($('archiveSearch')?.value||'').toLowerCase().trim();
+ let arr=archiveData.filter(x=>(String(x.offer_number||'')+' '+String(x.customer_name||'')).toLowerCase().includes(q));
+ const val=(x,k)=>k==='gross_amount'?Number(x.gross_amount||0):k==='offer_date'?(new Date(x.offer_date||0).getTime()||0):String(x[k]||'').toLowerCase();
+ arr.sort((x,y)=>{let A=val(x,archiveSort.key),B=val(y,archiveSort.key),c=(typeof A==='number'&&typeof B==='number')?A-B:String(A).localeCompare(String(B),'bs',{numeric:true,sensitivity:'base'});return archiveSort.dir==='asc'?c:-c});
+ const th=(k,l)=>`<th onclick="setArchiveSort('${k}')" style="cursor:pointer;user-select:none">${l}${archiveSortIcon(k)}</th>`;
+ const body=arr.map(x=>{
+  const deleted=hasOfferMarker(x,'DELETED'),corrected=!deleted&&hasOfferMarker(x,'CORRECTED');
+  const bg=deleted?'#fff1f0':corrected?'#fff7e6':'#fff';
+  const badge=deleted?'<span class="arc-badge del">IZBRISAN</span>':corrected?'<span class="arc-badge cor">KORIGOVAN</span>':'';
+  const actions=deleted?`<button class="btn secondary arc-btn" onclick="openArchivedOffer('${x.id}')">Pregled</button>`:`<button class="btn secondary arc-btn" onclick="openArchivedOffer('${x.id}')">Otvori / uredi</button><button class="btn danger arc-btn" onclick="deleteArchivedOffer('${x.id}','${String(x.offer_number||'').replace(/'/g,"\\'")}')">Izbriši</button>`;
+  return `<tr style="background:${bg}"><td><b>${x.offer_number||''}</b>${badge}</td><td>${x.customer_name||''}</td><td>${displayDate(x.offer_date)}</td><td class="arc-amount">${money(x.gross_amount)}</td><td><div class="actions arc-actions">${actions}</div></td></tr>`;
+ }).join('');
+ $('archiveList').innerHTML=`<div class="archive-table-wrap"><table class="archive-table"><thead><tr>${th('offer_number','Broj predračuna')}${th('customer_name','Klijent')}${th('offer_date','Datum predračuna')}${th('gross_amount','Iznos')}<th>Akcije</th></tr></thead><tbody>${body||'<tr><td colspan="5" class="arc-empty">Nema sačuvanih predračuna.</td></tr>'}</tbody></table></div><div class="arc-count">Prikazano ${arr.length} predračuna</div>`;
 }
 
 async function deleteArchivedOffer(id,no){
