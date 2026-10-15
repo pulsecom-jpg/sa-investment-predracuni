@@ -300,7 +300,16 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
   <div><label>E-mail</label><input id="csEmail" type="email"></div>
   <div><label>Web</label><input id="csWebsite"></div>
   <div><label>Bankovni račun</label><input id="csBank"></div>
-  <div><label>Logo URL</label><input id="csLogo" placeholder="https://..."></div>
+  <div>
+   <label>Logo firme</label>
+   <input id="csLogoFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCompanyLogoFile()">
+   <input id="csLogo" type="hidden">
+   <div style="margin-top:8px;display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+    <img id="csLogoPreview" alt="Logo firme" style="display:none;max-width:220px;max-height:90px;object-fit:contain;border:1px solid #e7ebf0;border-radius:10px;padding:6px;background:#fff">
+    <button type="button" class="btn secondary" style="padding:8px 12px" onclick="removeCompanyLogo()">Ukloni logo</button>
+   </div>
+   <div style="font-size:12px;color:#667085;margin-top:6px">PNG, JPG ili WEBP, maksimalno 2 MB.</div>
+  </div>
   <div><label>Ponudu sastavio</label><input id="csPreparedBy"></div>
  </div>
  <div style="margin-top:12px"><label>Standardna napomena na novom predračunu</label><textarea id="csOfferNote"></textarea></div>
@@ -1218,21 +1227,48 @@ async function showCompanySettings(){
  $('csAddress').value=escVal(c.address);$('csCity').value=escVal(c.city);$('csPhone').value=escVal(c.phone);
  $('csEmail').value=escVal(c.email);$('csWebsite').value=escVal(c.website);$('csBank').value=escVal(c.bank_account);
  $('csLogo').value=escVal(c.logo_url);$('csPreparedBy').value=escVal(c.offer_prepared_by);
+ const lp=$('csLogoPreview');if(lp){if(c.logo_url){lp.src=c.logo_url;lp.style.display='block'}else{lp.removeAttribute('src');lp.style.display='none'}}
+ if($('csLogoFile'))$('csLogoFile').value='';
  $('csOfferNote').value=escVal(c.offer_note_default);$('csFooter').value=escVal(c.offer_footer);
  $('companySettingsMsg').textContent='';
  $('companySettingsBox').style.display='block';window.scrollTo({top:0,behavior:'smooth'});
 }
+function previewCompanyLogoFile(){
+ const input=$('csLogoFile'),file=input?.files?.[0];if(!file)return;
+ if(!['image/png','image/jpeg','image/webp'].includes(file.type)){alert('Dozvoljeni su PNG, JPG i WEBP.');input.value='';return}
+ if(file.size>2*1024*1024){alert('Logo može biti maksimalno 2 MB.');input.value='';return}
+ const p=$('csLogoPreview');p.src=URL.createObjectURL(file);p.style.display='block';
+}
+function removeCompanyLogo(){
+ if($('csLogoFile'))$('csLogoFile').value='';
+ $('csLogo').value='';
+ const p=$('csLogoPreview');if(p){p.removeAttribute('src');p.style.display='none'}
+}
+async function uploadCompanyLogoIfNeeded(){
+ const file=$('csLogoFile')?.files?.[0];if(!file)return $('csLogo').value.trim()||null;
+ if(!currentCompany?.id)throw new Error('Firma nije učitana.');
+ const ext=(file.name.split('.').pop()||'png').toLowerCase().replace(/[^a-z0-9]/g,'')||'png';
+ const path=currentCompany.id+'/logo.'+ext;
+ const {error}=await sb.storage.from('company-logos').upload(path,file,{cacheControl:'3600',upsert:true,contentType:file.type});
+ if(error)throw error;
+ const {data}=sb.storage.from('company-logos').getPublicUrl(path);
+ const url=data?.publicUrl?data.publicUrl+'?v='+Date.now():null;
+ if(!url)throw new Error('Nije moguće dobiti URL loga.');
+ $('csLogo').value=url;return url;
+}
 async function saveCompanySettings(){
  if(!currentCompany?.id)return;
+ const msg=$('companySettingsMsg');msg.style.color='#667085';msg.textContent='Spremanje...';
+ let logoUrl;try{logoUrl=await uploadCompanyLogoIfNeeded()}catch(e){msg.style.color='#b42318';msg.textContent='Greška pri uploadu loga: '+(e?.message||e);return}
  const obj={name:$('csName').value.trim(),id_number:$('csIdNumber').value.trim()||null,vat_number:$('csVatNumber').value.trim()||null,
  address:$('csAddress').value.trim()||null,city:$('csCity').value.trim()||null,phone:$('csPhone').value.trim()||null,email:$('csEmail').value.trim()||null,
- website:$('csWebsite').value.trim()||null,bank_account:$('csBank').value.trim()||null,logo_url:$('csLogo').value.trim()||null,
+ website:$('csWebsite').value.trim()||null,bank_account:$('csBank').value.trim()||null,logo_url:logoUrl,
  offer_prepared_by:$('csPreparedBy').value.trim()||null,offer_note_default:$('csOfferNote').value.trim()||null,offer_footer:$('csFooter').value.trim()||null,
  updated_at:new Date().toISOString()};
  if(!obj.name){alert('Naziv firme je obavezan.');return}
  const {data,error}=await sb.from('companies').update(obj).eq('id',currentCompany.id).select('*').single();
- if(error){$('companySettingsMsg').style.color='#b42318';$('companySettingsMsg').textContent='Greška: '+error.message;return}
- currentCompany=data;$('companySettingsMsg').style.color='#067647';$('companySettingsMsg').textContent='Postavke firme su sačuvane.';
+ if(error){msg.style.color='#b42318';msg.textContent='Greška: '+error.message;return}
+ currentCompany=data;if($('csLogoFile'))$('csLogoFile').value='';msg.style.color='#067647';msg.textContent='Postavke firme i logo su sačuvani.';
 }
 function showHome(){
  if($('preview')){$('preview').style.display='none';$('preview').classList.remove('active');}
