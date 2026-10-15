@@ -229,8 +229,8 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v3.1</div></div></div>
 <div id="homeBox" class="wrap" style="display:none;max-width:760px">
 <div class="card" style="padding:22px">
- <h2 style="font-size:24px;margin-bottom:8px">Predračuni</h2>
- <p style="color:#667085;margin-top:0;margin-bottom:22px">Odaberi šta želiš uraditi.</p>
+ <h2 id="homeCompanyTitle" style="font-size:24px;margin-bottom:8px">Predračuni</h2>
+ <p id="homeCompanySubtitle" style="color:#667085;margin-top:0;margin-bottom:22px">Odaberi šta želiš uraditi.</p>
  <div style="display:grid;grid-template-columns:1fr;gap:12px">
   <button class="btn primary" style="padding:18px;font-size:18px;text-align:left" onclick="newOffer()">＋ Napravi novi predračun</button>
 <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showDashboard()">▦ Dashboard</button>
@@ -504,7 +504,7 @@ async function productSuggestForRow(row,source){
  if(error){console.error('Product autocomplete:',error);box.style.display='none';return}
  // If exact source search yields nothing, search both code and name.
  if(q && (!data || !data.length)){
-   ({data,error}=await sb.from('products').select('*').eq('active',true).or(`name.ilike.%${q}%,code.ilike.%${q}%`).order('name').limit(10));
+   ({data,error}=await sb.from('products').select('*').eq('company_id',requireCompanyId()).eq('active',true).or(`name.ilike.%${q}%,code.ilike.%${q}%`).order('name').limit(10));
  }
  const a=data||[];
  a.forEach(p=>{const i=productsData.findIndex(x=>x.id===p.id);if(i>=0)productsData[i]=p;else productsData.push(p)});
@@ -664,7 +664,7 @@ async function downloadPDF(){
 }
 function saveDraft(){
  const data={offerNo:$('offerNo').value,date:$('date').value,valid:$('valid').value,place:$('place').value,payment:$('payment').value,buyerName:$('buyerName').value,buyerAddress:$('buyerAddress').value,buyerCity:$('buyerCity').value,buyerPhone:$('buyerPhone').value,buyerEmail:$('buyerEmail').value,buyerTax:$('buyerTax').value,note:$('note').value,items:rows().map(r=>({code:r.querySelector('.code').value,name:r.querySelector('.name').value,description:r.querySelector('.description')?.value||'',unit:r.querySelector('.unit').value,qty:r.querySelector('.qty').value,price:r.querySelector('.price').value}))};
- localStorage.setItem('sa_offer_draft',JSON.stringify(data)); alert('Nacrt je sačuvan na ovom uređaju.');
+ localStorage.setItem('offer_draft:'+requireCompanyId(),JSON.stringify(data)); alert('Nacrt je sačuvan na ovom uređaju.');
 }
 
 let archiveData=[];
@@ -682,8 +682,20 @@ async function loadCurrentCompany(){
  if(!company?.is_active)throw new Error('Firma nije aktivna.');
  currentUserProfile=profile;
  currentCompany=company;
+ // Svaka prijava radi isključivo u kontekstu dodijeljene firme.
+ archiveData=[];customersData=[];productsData=[];currentOfferId=null;
  document.title=(company.name||'Firma')+' | Predračuni';
- const headerSub=document.querySelector('header .appLogo + div');if(headerSub)headerSub.textContent=(company.name||'')+' · Predračuni';
+ const headerLogo=document.querySelector('header .appLogo');
+ if(headerLogo){
+   if(!headerLogo.dataset.defaultSrc)headerLogo.dataset.defaultSrc=headerLogo.src;
+   if(company.logo_url){headerLogo.src=company.logo_url;headerLogo.style.display='block'}
+   else if(String(company.name||'').toLowerCase().includes('sa investment')){headerLogo.src=headerLogo.dataset.defaultSrc;headerLogo.style.display='block'}
+   else{headerLogo.style.display='none'}
+ }
+ const headerSub=document.querySelector('header .appLogo + div');
+ if(headerSub)headerSub.textContent=(company.name||'')+' · Predračuni';
+ const ht=$('homeCompanyTitle');if(ht)ht.textContent=(company.name||'Firma')+' · Predračuni';
+ const hs=$('homeCompanySubtitle');if(hs)hs.textContent='Prijavljeni ste u radni prostor firme '+(company.name||'')+'. Prikazuju se samo njeni predračuni, kupci i artikli.';
  const ab=$('adminMenuBtn');if(ab)ab.style.display=profile.role==='super_admin'?'block':'none';
  return company;
 }
@@ -716,6 +728,7 @@ async function archiveCurrentCustomer(){
  const name=$('buyerName').value.trim();
  if(!name){alert('Prvo unesi ime / naziv kupca.');return}
  const customer={
+  company_id:requireCompanyId(),
   name:name,
   address:$('buyerAddress').value.trim()||null,
   city:$('buyerCity').value.trim()||null,
@@ -951,7 +964,7 @@ async function copyOffer(){return saveAsNewOffer()}
 
 async function nextOfferNumber(){
  const d=new Date(),m=String(d.getMonth()+1).padStart(2,'0'),y=d.getFullYear();
- const {data,error}=await sb.from('offers').select('offer_number');
+ const {data,error}=await sb.from('offers').select('offer_number').eq('company_id',requireCompanyId());
  if(error){console.error(error);return '001/'+m+'/'+y}
  let max=0;
  (data||[]).forEach(o=>{
@@ -1006,7 +1019,7 @@ $('buyerName')?.addEventListener('blur',()=>setTimeout(()=>{const b=$('customerS
 
 async function selectSuggestedCustomer(id){
  let c=customersData.find(x=>x.id===id);
- if(!c){const {data}=await sb.from('customers').select('*').eq('id',id).single();c=data}
+ if(!c){const {data}=await sb.from('customers').select('*').eq('id',id).eq('company_id',requireCompanyId()).single();c=data}
  if(!c)return;
  $('buyerName').value=c.name||'';$('buyerAddress').value=c.address||'';$('buyerCity').value=c.city||'';$('buyerPhone').value=c.phone||'';$('buyerEmail').value=c.email||'';$('buyerTax').value=c.id_number||c.vat_number||'';
  $('customerSuggestions').style.display='none';
@@ -1015,7 +1028,7 @@ async function deleteCustomer(id){
  const c=customersData.find(x=>x.id===id);
  const name=c?.name||'ovog kupca';
  if(!confirm(`Da li sigurno želiš izbrisati kupca "${name}" iz baze kupaca?\n\nPostojeći predračuni ostaju sačuvani u arhivi.`))return;
- const {error}=await sb.from('customers').delete().eq('id',id);
+ const {error}=await sb.from('customers').delete().eq('id',id).eq('company_id',requireCompanyId());
  if(error){alert('Kupca nije moguće izbrisati: '+error.message);return}
  customersData=customersData.filter(x=>x.id!==id);
  renderCustomers();
