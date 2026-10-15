@@ -299,7 +299,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
   <div><label>Telefon</label><input id="csPhone"></div>
   <div><label>E-mail</label><input id="csEmail" type="email"></div>
   <div><label>Web</label><input id="csWebsite"></div>
-  <div><label>Bankovni račun</label><input id="csBank"></div>
+  <div style="grid-column:1/-1"><label>Bankovni računi</label><div id="csBankAccounts"></div><button type="button" class="btn secondary" style="margin-top:8px;padding:9px 12px" onclick="addCompanyBankAccount()">+ Dodaj bankovni račun</button></div>
   <div>
    <label>Logo firme</label>
    <input id="csLogoFile" type="file" accept="image/png,image/jpeg,image/webp" onchange="previewCompanyLogoFile()">
@@ -617,7 +617,7 @@ function companyPreviewHTML(c){
  if(c?.website)lines.push(escHtml(c.website));
  if(c?.id_number)lines.push('ID broj: '+escHtml(c.id_number));
  if(c?.vat_number)lines.push('PDV broj: '+escHtml(c.vat_number));
- if(c?.bank_account)lines.push('Bankovni račun: '+escHtml(c.bank_account));
+ const banks=companyBankAccounts(c);banks.forEach((b,i)=>{if(b.account)lines.push((b.bank?escHtml(b.bank)+': ':'Bankovni račun'+(banks.length>1?' '+(i+1):'')+': ')+escHtml(b.account))});
  return lines.join('<br>');
 }
 function fillPreview(){
@@ -1239,13 +1239,19 @@ async function createAdminUser(){
 async function toggleAdminUser(id,active){const {error}=await sb.from('user_profiles').update({is_active:active}).eq('id',id);if(error){alert(error.message);return}await loadAdminData()}
 
 function escVal(v){return v==null?'':String(v)}
+function companyBankAccounts(c){let a=Array.isArray(c?.bank_accounts)?c.bank_accounts:[];if(!a.length&&c?.bank_account)a=[{bank:'',account:c.bank_account}];return a.filter(x=>x&&((x.bank||'').trim()||(x.account||'').trim()))}
+function renderCompanyBankAccounts(a=[]){const box=$('csBankAccounts');if(!box)return;const rows=a.length?a:[{bank:'',account:''}];box.innerHTML=rows.map(x=>`<div class="company-bank-row" style="display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin-bottom:8px;align-items:end"><div><label style="font-size:12px">Banka</label><input class="bank-name" value="${escHtml(x.bank||'')}" placeholder="Naziv banke"></div><div><label style="font-size:12px">Broj računa</label><input class="bank-account" value="${escHtml(x.account||'')}" placeholder="Broj računa"></div><button type="button" class="btn danger" style="padding:11px" onclick="this.closest('.company-bank-row').remove();ensureCompanyBankRow()">✕</button></div>`).join('')}
+function ensureCompanyBankRow(){if(!$('csBankAccounts')?.querySelector('.company-bank-row'))renderCompanyBankAccounts([])}
+function addCompanyBankAccount(){const box=$('csBankAccounts');if(!box)return;const d=document.createElement('div');d.className='company-bank-row';d.style.cssText='display:grid;grid-template-columns:1fr 2fr auto;gap:8px;margin-bottom:8px;align-items:end';d.innerHTML='<div><label style="font-size:12px">Banka</label><input class="bank-name" placeholder="Naziv banke"></div><div><label style="font-size:12px">Broj računa</label><input class="bank-account" placeholder="Broj računa"></div><button type="button" class="btn danger" style="padding:11px" onclick="this.closest(\'.company-bank-row\').remove();ensureCompanyBankRow()">✕</button>';box.appendChild(d)}
+function readCompanyBankAccounts(){return [...document.querySelectorAll('#csBankAccounts .company-bank-row')].map(r=>({bank:r.querySelector('.bank-name').value.trim(),account:r.querySelector('.bank-account').value.trim()})).filter(x=>x.bank||x.account)}
+
 async function showCompanySettings(){
  hideAdmin();hideMainViews();
  if(!currentCompany){alert('Firma nije učitana.');return}
  const c=currentCompany;
  $('csName').value=escVal(c.name);$('csIdNumber').value=escVal(c.id_number);$('csVatNumber').value=escVal(c.vat_number);
  $('csAddress').value=escVal(c.address);$('csCity').value=escVal(c.city);$('csPhone').value=escVal(c.phone);
- $('csEmail').value=escVal(c.email);$('csWebsite').value=escVal(c.website);$('csBank').value=escVal(c.bank_account);
+ $('csEmail').value=escVal(c.email);$('csWebsite').value=escVal(c.website);renderCompanyBankAccounts(companyBankAccounts(c));
  $('csLogo').value=escVal(c.logo_url);$('csPreparedBy').value=escVal(c.offer_prepared_by);
  const lp=$('csLogoPreview');if(lp){if(c.logo_url){lp.src=c.logo_url;lp.style.display='block'}else{lp.removeAttribute('src');lp.style.display='none'}}
  if($('csLogoFile'))$('csLogoFile').value='';
@@ -1282,7 +1288,7 @@ async function saveCompanySettings(){
  let logoUrl;try{logoUrl=await uploadCompanyLogoIfNeeded()}catch(e){msg.style.color='#b42318';msg.textContent='Greška pri uploadu loga: '+(e?.message||e);return}
  const obj={name:$('csName').value.trim(),id_number:$('csIdNumber').value.trim()||null,vat_number:$('csVatNumber').value.trim()||null,
  address:$('csAddress').value.trim()||null,city:$('csCity').value.trim()||null,phone:$('csPhone').value.trim()||null,email:$('csEmail').value.trim()||null,
- website:$('csWebsite').value.trim()||null,bank_account:$('csBank').value.trim()||null,logo_url:logoUrl,
+ website:$('csWebsite').value.trim()||null,bank_accounts:readCompanyBankAccounts(),bank_account:(readCompanyBankAccounts()[0]?.account||null),logo_url:logoUrl,
  offer_prepared_by:$('csPreparedBy').value.trim()||null,offer_note_default:$('csOfferNote').value.trim()||null,offer_footer:$('csFooter').value.trim()||null,
  updated_at:new Date().toISOString()};
  if(!obj.name){alert('Naziv firme je obavezan.');return}
