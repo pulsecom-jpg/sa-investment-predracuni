@@ -235,6 +235,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
   <button class="btn primary" style="padding:18px;font-size:18px;text-align:left" onclick="newOffer()">＋ Napravi novi predračun</button>
 <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showDashboard()">▦ Dashboard</button>
   <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showArchive()">▣ Arhiva predračuna</button>
+<button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showInvoices()">🧾 Računi</button>
 <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showCustomers()">👥 Kupci</button>
 <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showProducts()">▤ Artikli</button>
 <button class="btn secondary" style="padding:18px;font-size:18px;text-align:left" onclick="showCompanySettings()">🏢 Postavke firme</button>
@@ -358,6 +359,10 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <div class="card"><h2>Kretanje cijena artikla</h2><div style="font-size:13px;color:#667085;margin-bottom:10px">Pretraži artikal i otvori historiju ponuđenih cijena.</div><input id="dashProductSearch" placeholder="Šifra ili naziv artikla..." oninput="renderDashProductSearch()"><div id="dashProductResults" style="margin-top:10px"></div></div>
 </div>
 <div id="dashDrillBox" class="wrap" style="display:none"><div class="card"><button class="btn secondary" onclick="closeDashboardDrill()">← Nazad na Dashboard</button><h2 id="dashDrillTitle" style="font-size:24px;margin-top:18px"></h2><div id="dashDrillContent"></div></div></div>
+<div id="invoicesBox" class="wrap" style="display:none">
+<div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><div><h2 style="font-size:24px;margin-bottom:5px">🧾 Računi</h2><div style="color:#667085">Računi nastali iz predračuna.</div></div><button class="btn secondary" onclick="showHome()">Početni meni</button></div>
+<input id="invoiceSearch" placeholder="Pretraži broj računa ili kupca..." oninput="renderInvoices()">
+<div id="invoicesList" style="margin-top:12px"></div></div></div>
 <div id="archiveBox" class="wrap" style="display:none">
 <div class="card"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><h2>Arhiva predračuna</h2><div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn secondary" onclick="showHome()">Početni meni</button><button class="btn secondary" onclick="newOffer()">+ Novi predračun</button></div></div>
 <input id="archiveSearch" placeholder="Pretraži broj ili kupca..." oninput="renderArchive()">
@@ -908,6 +913,7 @@ function ensureEditActions(){
    <button class="btn primary" onclick="updateOffer()">💾 Snimi izmjene pod istim brojem</button>
    <button class="btn secondary" onclick="saveAsNewOffer()">📄 Snimi kao novi predračun</button>
    <button class="btn secondary" onclick="showPreview()">Pregled / PDF</button>
+   <button class="btn primary" onclick="convertOfferToInvoice()">🧾 Pretvori u račun</button>
    <button class="btn danger" onclick="deleteCurrentOffer()">Izbriši predračun</button>
    <button class="btn secondary" onclick="showArchive()">Nazad u arhivu</button><button class="btn secondary" onclick="showHome()">Početni meni</button>
   </div>`;
@@ -989,7 +995,7 @@ async function newOffer(){
 let customersData=[],productsData=[],editingCustomerId=null,editingProductId=null;
 
 function hideMainViews(){
- ['homeBox','archiveBox','editorBox','dashboardBox','customersBox','productsBox','companySettingsBox'].forEach(id=>{if($(id))$(id).style.display='none'});
+ ['homeBox','archiveBox','invoicesBox','editorBox','dashboardBox','customersBox','productsBox','companySettingsBox'].forEach(id=>{if($(id))$(id).style.display='none'});
 }
 async function ensureCustomersLoaded(){
  if(!customersData.length){
@@ -1296,11 +1302,42 @@ async function saveCompanySettings(){
  if(error){msg.style.color='#b42318';msg.textContent='Greška: '+error.message;return}
  currentCompany=data;if($('csLogoFile'))$('csLogoFile').value='';msg.style.color='#067647';msg.textContent='Postavke firme i logo su sačuvani.';
 }
+
+let invoicesData=[];
+function invoiceStatusLabel(s){return s==='locked'?'Zaključan':s==='fiscalized'?'Fiskalizovan':s==='posted'?'Knjižen':'U pripremi'}
+async function nextInvoiceNumber(){
+ const y=new Date().getFullYear();
+ const {data,error}=await sb.from('invoices').select('invoice_number').eq('company_id',requireCompanyId()).eq('invoice_year',y);
+ if(error)throw error;let max=0;(data||[]).forEach(x=>{const m=String(x.invoice_number||'').match(/^(\d+)\/(\d{4})$/);if(m&&+m[2]===y)max=Math.max(max,+m[1])});
+ return (max+1)+'/'+y;
+}
+async function convertOfferToInvoice(){
+ if(!currentOfferId){alert('Prvo otvori sačuvani predračun iz arhive.');return}
+ const existing=await sb.from('invoices').select('id,invoice_number').eq('company_id',requireCompanyId()).eq('source_offer_id',currentOfferId).limit(1);
+ if(existing.data?.length){alert('Za ovaj predračun već postoji račun '+existing.data[0].invoice_number+'.');showInvoices();return}
+ const {data:o,error:oe}=await sb.from('offers').select('*').eq('id',currentOfferId).eq('company_id',requireCompanyId()).single();if(oe){alert(oe.message);return}
+ const {data:its,error:ie}=await sb.from('offer_items').select('*').eq('offer_id',currentOfferId).order('position');if(ie){alert(ie.message);return}
+ const no=await nextInvoiceNumber(),today=new Date().toISOString().slice(0,10),year=+today.slice(0,4);
+ const inv={company_id:requireCompanyId(),source_offer_id:o.id,invoice_number:no,invoice_year:year,invoice_date:today,due_date:today,customer_id:o.customer_id||null,customer_name:o.customer_name,customer_address:o.customer_address,customer_city:o.customer_city,customer_phone:o.customer_phone,customer_email:o.customer_email,customer_id_number:o.customer_id_number,note:cleanOfferNote(o.note||''),status:'draft',net_amount:o.net_amount||0,vat_rate:o.vat_rate||17,vat_amount:o.vat_amount||0,gross_amount:o.gross_amount||0};
+ const {data:i,error}=await sb.from('invoices').insert(inv).select('id,invoice_number').single();if(error){alert('Račun nije kreiran: '+error.message);return}
+ const rows=(its||[]).map(x=>({invoice_id:i.id,position:x.position,product_code:x.product_code,product_name:x.product_name,description:x.description,unit:x.unit,quantity:x.quantity,unit_price:x.unit_price,vat_rate:x.vat_rate||17,net_amount:x.net_amount,vat_amount:x.vat_amount,gross_amount:x.gross_amount}));
+ if(rows.length){const {error:e}=await sb.from('invoice_items').insert(rows);if(e){alert('Račun je kreiran, ali stavke nisu kopirane: '+e.message);return}}
+ alert('Kreiran je račun '+i.invoice_number+'.');showInvoices();
+}
+async function loadInvoices(){const {data,error}=await sb.from('invoices').select('*').eq('company_id',requireCompanyId()).order('invoice_date',{ascending:false}).order('created_at',{ascending:false});if(error){alert(error.message);return}invoicesData=data||[];renderInvoices()}
+function renderInvoices(){
+ const el=$('invoicesList');if(!el)return;const q=($('invoiceSearch')?.value||'').toLowerCase();const a=invoicesData.filter(x=>(String(x.invoice_number)+' '+String(x.customer_name)).toLowerCase().includes(q));
+ el.innerHTML=`<div class="items"><table style="min-width:980px"><thead><tr><th>Broj računa</th><th>Godina</th><th>Datum</th><th>Dospijeće</th><th>Kupac</th><th>Iznos</th><th>Status</th><th>Fiskalni račun</th><th>Akcije</th></tr></thead><tbody>${a.map(x=>`<tr><td><b>${x.invoice_number}</b></td><td>${x.invoice_year}</td><td>${displayDate(x.invoice_date)}</td><td>${displayDate(x.due_date)}</td><td>${x.customer_name||''}</td><td class="right">${money(x.gross_amount)}</td><td>${invoiceStatusLabel(x.status)}</td><td>${x.fiscal_number||'—'}</td><td><div class="actions">${x.status==='draft'?'<button class="btn secondary" onclick="lockInvoice(\''+x.id+'\')">Zaključaj</button>':''}${x.status==='locked'?'<button class="btn primary" onclick="markInvoiceFiscalized(\''+x.id+'\')">Fiskalizuj test</button>':''}${x.status==='fiscalized'?'<button class="btn primary" onclick="postInvoice(\''+x.id+'\')">Knjiži</button>':''}</div></td></tr>`).join('')||'<tr><td colspan="9">Nema računa.</td></tr>'}</tbody></table></div>`;
+}
+async function lockInvoice(id){if(!confirm('Zaključati račun? Nakon zaključavanja sadržaj računa se više ne treba mijenjati.'))return;const {error}=await sb.from('invoices').update({status:'locked',locked_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id).eq('company_id',requireCompanyId()).eq('status','draft');if(error){alert(error.message);return}await loadInvoices()}
+async function markInvoiceFiscalized(id){const n=prompt('TEST fiskalizacije: upiši broj fiskalnog računa.\nKasnije će ovaj broj automatski vratiti fiskalni uređaj.');if(!n)return;const {error}=await sb.from('invoices').update({status:'fiscalized',fiscal_number:n.trim(),fiscalized_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id).eq('company_id',requireCompanyId()).eq('status','locked');if(error){alert(error.message);return}await loadInvoices()}
+async function postInvoice(id){if(!confirm('Knjižiti fiskalizovani račun?'))return;const {error}=await sb.from('invoices').update({status:'posted',posted_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id).eq('company_id',requireCompanyId()).eq('status','fiscalized');if(error){alert(error.message);return}await loadInvoices()}
+function showInvoices(){hideAdmin();hideMainViews();if($('invoicesBox'))$('invoicesBox').style.display='block';loadInvoices();window.scrollTo({top:0,behavior:'smooth'})}
 function showHome(){
  if($('preview')){$('preview').style.display='none';$('preview').classList.remove('active');}
  if($('dashDrillBox'))$('dashDrillBox').style.display='none';
  if($('customersBox'))$('customersBox').style.display='none';if($('productsBox'))$('productsBox').style.display='none';if($('companySettingsBox'))$('companySettingsBox').style.display='none';hideAdmin();
- $('homeBox').style.display='block';if($('dashboardBox'))$('dashboardBox').style.display='none';$('archiveBox').style.display='none';$('editorBox').style.display='none';
+ if($('invoicesBox'))$('invoicesBox').style.display='none';$('homeBox').style.display='block';if($('dashboardBox'))$('dashboardBox').style.display='none';$('archiveBox').style.display='none';$('editorBox').style.display='none';
  window.scrollTo({top:0,behavior:'smooth'});
 }
 function showArchive(){
