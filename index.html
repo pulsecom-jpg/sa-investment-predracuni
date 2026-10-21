@@ -824,7 +824,7 @@ function renderArchive(){
    if(card.dataset.loaded)return;
    card.dataset.loaded='1';
    const id=btn.dataset.id;
-   const {data:o,error:oe}=await sb.from('offers').select('*').eq('id',id).single();
+   const {data:o,error:oe}=await sb.from('offers').select('*').eq('id',id).eq('company_id',requireCompanyId()).single();
    const {data:its,error:ie}=await sb.from('offer_items').select('*').eq('offer_id',id).order('position');
    if(oe||ie){card.innerHTML='<div class="arc-preview-loading">Preview nije moguće učitati.</div>';return}
    const itemRows=(its||[]).map((i,k)=>{
@@ -885,11 +885,15 @@ async function deleteArchivedOffer(id,no){
 let currentOfferId=null;
 
 async function openArchivedOffer(id){
- const {data:o,error:oe}=await sb.from('offers').select('*').eq('id',id).single();
- if(oe){alert('Greška pri otvaranju predračuna: '+oe.message);return}
- const {data:its,error:ie}=await sb.from('offer_items').select('*').eq('offer_id',id).order('position');
+ // Ne dozvoli da stanje prethodno otvorenog predračuna ostane u editoru.
+ currentOfferId=null;
+ $('items').innerHTML='';
+ const companyId=requireCompanyId();
+ const {data:o,error:oe}=await sb.from('offers').select('*').eq('id',id).eq('company_id',companyId).single();
+ if(oe||!o){alert('Greška pri otvaranju predračuna: '+(oe?.message||'Predračun nije pronađen za ovu firmu.'));return}
+ const {data:its,error:ie}=await sb.from('offer_items').select('*').eq('offer_id',o.id).order('position',{ascending:true}).order('id',{ascending:true});
  if(ie){alert('Greška pri učitavanju stavki: '+ie.message);return}
- currentOfferId=id;
+ currentOfferId=o.id;
  $('offerNo').value=o.offer_number||'';
  $('date').value=o.offer_date||'';
  $('valid').value=o.valid_days??5;
@@ -937,15 +941,19 @@ function ensureEditActions(){
 
 async function updateOffer(){
  if(!currentOfferId){alert('Nije otvoren sačuvani predračun.');return}
+ const editingOfferId=currentOfferId;
+ const companyId=requireCompanyId();
+ const {data:existing,error:verifyError}=await sb.from('offers').select('id').eq('id',editingOfferId).eq('company_id',companyId).single();
+ if(verifyError||!existing||currentOfferId!==editingOfferId){alert('Predračun nije moguće sigurno identificirati. Osvježi arhivu i pokušaj ponovo.');return}
  if(!$('buyerName').value.trim()){alert('Unesi ime / naziv kupca.');return}
  const s=calc();
  const offer={offer_number:$('offerNo').value,offer_date:displayToIso($('date').value),valid_days:+$('valid').value||5,delivery_place:$('place').value,payment_method:$('payment').value,customer_name:$('buyerName').value.trim(),customer_address:$('buyerAddress').value||null,customer_city:$('buyerCity').value||null,customer_phone:$('buyerPhone').value||null,customer_email:$('buyerEmail').value||null,customer_id_number:$('buyerTax').value||null,note:$('note').value,status:$('offerStatus').value||'draft',net_amount:s.net,vat_rate:17,vat_amount:s.vat,gross_amount:s.gross};
  offer.note=addOfferMarker(offer.note,'CORRECTED');
- const {error:oe}=await sb.from('offers').update(offer).eq('id',currentOfferId);
+ const {error:oe}=await sb.from('offers').update(offer).eq('id',editingOfferId).eq('company_id',companyId);
  if(oe){alert('Greška pri izmjeni predračuna: '+oe.message);return}
- const {error:de}=await sb.from('offer_items').delete().eq('offer_id',currentOfferId);
+ const {error:de}=await sb.from('offer_items').delete().eq('offer_id',editingOfferId);
  if(de){alert('Predračun je izmijenjen, ali stare stavke nisu mogle biti zamijenjene: '+de.message);return}
- const items=rows().map((r,i)=>{let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,n=q*p,v=n*.17;return {offer_id:currentOfferId,position:i+1,product_code:r.querySelector('.code').value||null,product_name:r.querySelector('.name').value,description:r.querySelector('.description')?.value||null,unit:r.querySelector('.unit').value,quantity:q,unit_price:p,vat_rate:17,net_amount:n,vat_amount:v,gross_amount:n+v}});
+ const items=rows().map((r,i)=>{let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,n=q*p,v=n*.17;return {offer_id:editingOfferId,position:i+1,product_code:r.querySelector('.code').value||null,product_name:r.querySelector('.name').value,description:r.querySelector('.description')?.value||null,unit:r.querySelector('.unit').value,quantity:q,unit_price:p,vat_rate:17,net_amount:n,vat_amount:v,gross_amount:n+v}});
  if(items.length){
   const {error:ie}=await sb.from('offer_items').insert(items);
   if(ie){alert('Greška pri spremanju novih stavki: '+ie.message);return}
