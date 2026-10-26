@@ -225,7 +225,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <p style="color:#667085">Prijavi se za pristup SA Investment predračunima.</p>
 <label>E-mail</label><input id="loginEmail" type="email">
 <div style="height:10px"></div><label>Lozinka</label><input id="loginPassword" type="password">
-<div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button>
+<div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button><button class="btn secondary" style="margin-left:8px" onclick="resetPassword()">Zaboravili ste lozinku?</button>
 <div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v3.1</div></div></div>
 <div id="homeBox" class="wrap" style="display:none;max-width:760px">
 <div class="card" style="padding:22px">
@@ -715,6 +715,14 @@ async function loadCurrentCompany(){
 function requireCompanyId(){
  if(!currentCompany?.id)throw new Error('Firma nije učitana. Odjavi se i prijavi ponovo.');
  return currentCompany.id;
+}
+async function resetPassword(){
+ const email=$('loginEmail').value.trim().toLowerCase(),msg=$('loginMsg');
+ if(!email){msg.style.color='#b42318';msg.textContent='Prvo upiši svoj e-mail.';return}
+ msg.style.color='#667085';msg.textContent='Šaljem link za reset lozinke...';
+ const {error}=await sb.auth.resetPasswordForEmail(email,{redirectTo:location.origin+location.pathname});
+ if(error){msg.style.color='#b42318';msg.textContent='Reset lozinke nije moguće poslati: '+error.message;return}
+ msg.style.color='#067647';msg.textContent='Ako korisnik postoji, link za promjenu lozinke je poslan na e-mail.';
 }
 async function login(){
  const {error}=await sb.auth.signInWithPassword({email:$('loginEmail').value.trim(),password:$('loginPassword').value});
