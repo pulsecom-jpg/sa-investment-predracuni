@@ -227,6 +227,13 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <div style="height:10px"></div><label>Lozinka</label><input id="loginPassword" type="password">
 <div style="height:14px"></div><button class="btn primary" onclick="login()">Prijavi se</button><button class="btn secondary" style="margin-left:8px" onclick="resetPassword()">Zaboravili ste lozinku?</button>
 <div id="loginMsg" style="margin-top:12px;color:#b42318"></div><div style="margin-top:16px;color:#98a2b3;font-size:12px">Verzija v3.1</div></div></div>
+<div id="passwordResetBox" class="wrap" style="max-width:520px;display:none">
+<div class="card"><h2>Postavi novu lozinku</h2>
+<p style="color:#667085">Unesi novu lozinku za svoj korisnički račun.</p>
+<label>Nova lozinka</label><input id="newPassword" type="password" placeholder="Najmanje 8 znakova">
+<div style="height:10px"></div><label>Ponovi novu lozinku</label><input id="newPassword2" type="password">
+<div style="height:14px"></div><button class="btn primary" onclick="saveNewPassword()">Promijeni lozinku</button>
+<div id="passwordResetMsg" style="margin-top:12px"></div></div></div>
 <div id="homeBox" class="wrap" style="display:none;max-width:760px">
 <div class="card" style="padding:22px">
  <h2 id="homeCompanyTitle" style="font-size:24px;margin-bottom:8px">Predračuni</h2>
@@ -716,6 +723,23 @@ function requireCompanyId(){
  if(!currentCompany?.id)throw new Error('Firma nije učitana. Odjavi se i prijavi ponovo.');
  return currentCompany.id;
 }
+let passwordRecoveryMode=false;
+function showPasswordResetForm(){
+ passwordRecoveryMode=true;
+ $('loginBox').style.display='none';$('passwordResetBox').style.display='block';$('topNav').style.display='none';
+ ['homeBox','editorBox','archiveBox','invoicesBox','invoiceEditorBox','dashboardBox','customersBox','productsBox','companySettingsBox','adminBox'].forEach(id=>{if($(id))$(id).style.display='none'});
+}
+async function saveNewPassword(){
+ const p1=$('newPassword').value,p2=$('newPassword2').value,msg=$('passwordResetMsg');
+ if(p1.length<8){msg.style.color='#b42318';msg.textContent='Lozinka mora imati najmanje 8 znakova.';return}
+ if(p1!==p2){msg.style.color='#b42318';msg.textContent='Lozinke se ne podudaraju.';return}
+ msg.style.color='#667085';msg.textContent='Spremam novu lozinku...';
+ const {error}=await sb.auth.updateUser({password:p1});
+ if(error){msg.style.color='#b42318';msg.textContent='Lozinka nije promijenjena: '+error.message;return}
+ msg.style.color='#067647';msg.textContent='Lozinka je uspješno promijenjena. Sada se možeš prijaviti.';
+ passwordRecoveryMode=false;await sb.auth.signOut();
+ setTimeout(()=>{history.replaceState({},document.title,location.pathname);location.reload()},900);
+}
 async function resetPassword(){
  const email=$('loginEmail').value.trim().toLowerCase(),msg=$('loginMsg');
  if(!email){msg.style.color='#b42318';msg.textContent='Prvo upiši svoj e-mail.';return}
@@ -731,6 +755,7 @@ async function login(){
 }
 async function logout(){await sb.auth.signOut();location.reload()}
 async function boot(){
+ if(passwordRecoveryMode){showPasswordResetForm();return}
  const {data:{session}}=await sb.auth.getSession();
  $('loginBox').style.display=session?'none':'block';
  $('editorBox').style.display='none';
@@ -1401,6 +1426,9 @@ function showEditor(){
  addItem({code:'18_ch',name:'VIVAX COOL, klima uređaj ACP-18CH50AERI+ R32',unit:'kom',qty:1,price:1366});
  addItem({code:'wifi',name:'Wifi modul',unit:'kom',qty:1,price:25});
 })();
+sb.auth.onAuthStateChange((event,session)=>{
+ if(event==='PASSWORD_RECOVERY'){showPasswordResetForm()}
+});
 boot();
 </script>
 </body>
