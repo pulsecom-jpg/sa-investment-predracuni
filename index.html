@@ -330,7 +330,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
 <div class="card"><div style="display:flex;justify-content:space-between;gap:10px;align-items:center;flex-wrap:wrap"><h2 style="font-size:24px">Kupci</h2><button class="btn secondary" onclick="showHome()">Početni meni</button></div>
 <div class="grid"><div><label>Pretraga</label><input id="customerSearch" placeholder="Ime, grad, telefon..." oninput="renderCustomers()"></div><div style="align-self:end"><button class="btn primary" onclick="newCustomerForm()">+ Dodaj kupca</button></div></div></div>
 <div id="customerForm" class="card" style="display:none"><h2 id="customerFormTitle">Novi kupac</h2><div class="grid">
-<div><label>Ime / naziv *</label><input id="cName"></div><div><label>Adresa</label><input id="cAddress"></div><div><label>Grad</label><input id="cCity"></div><div><label>Telefon</label><input id="cPhone"></div><div><label>E-mail</label><input id="cEmail"></div><div><label>ID broj</label><input id="cId"></div><div><label>PDV broj</label><input id="cVat"></div></div><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="saveCustomer()">Sačuvaj kupca</button><button class="btn secondary" onclick="$('customerForm').style.display='none'">Odustani</button></div></div>
+<div><label>Ime / naziv *</label><input id="cName"></div><div><label>Adresa</label><input id="cAddress"></div><div><label>Grad</label><input id="cCity"></div><div><label>Telefon</label><input id="cPhone"></div><div><label>E-mail</label><input id="cEmail"></div><div><label>ID broj (JIB)</label><input id="cId" placeholder="Unesi ID/JIB broj"></div><div><label>PDV broj</label><input id="cVat" placeholder="Unesi PDV broj"></div></div><div class="actions" style="margin-top:14px"><button class="btn primary" onclick="saveCustomer()">Sačuvaj kupca</button><button class="btn secondary" onclick="$('customerForm').style.display='none'">Odustani</button></div></div>
 <div class="card">
 <div style="font-size:13px;color:#667085;margin-bottom:8px">Kod svakog kupca možeš urediti podatke, koristiti ga u predračunu ili ga izbrisati iz baze.</div>
 <div id="customersList"></div></div></div>
@@ -402,7 +402,8 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
    <div><label>Grad</label><input id="buyerCity" placeholder="Sarajevo"></div>
    <div><label>Telefon</label><input id="buyerPhone"></div>
    <div><label>E-mail</label><input id="buyerEmail" type="email"></div>
-   <div><label>ID / PDV broj</label><input id="buyerTax"></div>
+   <div><label>ID broj</label><input id="buyerId"></div>
+   <div><label>PDV broj</label><input id="buyerVat"></div>
   </div>
  </div>
 
@@ -780,12 +781,13 @@ async function archiveCurrentCustomer(){
   city:$('buyerCity').value.trim()||null,
   phone:$('buyerPhone').value.trim()||null,
   email:$('buyerEmail').value.trim()||null,
-  id_number:$('buyerTax').value.trim()||null
+  id_number:$('buyerId').value.trim()||null,
+  vat_number:$('buyerVat').value.trim()||null
  };
  if(customer.id_number){
   const {data:existing,error:ee}=await sb.from('customers').select('id,name').eq('company_id',requireCompanyId()).eq('id_number',customer.id_number).limit(1);
   if(!ee && existing && existing.length){
-   alert('Kupac sa ovim ID / PDV brojem već postoji u arhivi: '+existing[0].name);
+   alert('Kupac sa ovim ID brojem već postoji u arhivi: '+existing[0].name);
    return;
   }
  }
@@ -798,12 +800,12 @@ async function archiveCurrentCustomer(){
 async function saveOffer(){
  if(!$('buyerName').value.trim()){alert('Unesi ime / naziv kupca.');return}
  const s=calc();
- const customer={company_id:requireCompanyId(),name:$('buyerName').value.trim(),address:$('buyerAddress').value||null,city:$('buyerCity').value||null,phone:$('buyerPhone').value||null,email:$('buyerEmail').value||null,id_number:$('buyerTax').value||null};
+ const customer={company_id:requireCompanyId(),name:$('buyerName').value.trim(),address:$('buyerAddress').value||null,city:$('buyerCity').value||null,phone:$('buyerPhone').value||null,email:$('buyerEmail').value||null,id_number:$('buyerId').value||null,vat_number:$('buyerVat').value||null};
  let customerId=null;
  const {data:c,error:ce}=await sb.from('customers').insert(customer).select('id').single();
  if(ce){alert('Greška pri spremanju kupca: '+ce.message);return}
  customerId=c.id;
- const offer={company_id:requireCompanyId(),offer_number:$('offerNo').value,offer_date:displayToIso($('date').value),valid_days:+$('valid').value||5,delivery_place:$('place').value,payment_method:$('payment').value,customer_id:customerId,customer_name:customer.name,customer_address:customer.address,customer_city:customer.city,customer_phone:customer.phone,customer_email:customer.email,customer_id_number:customer.id_number,note:$('note').value,status:$('offerStatus').value||'draft',net_amount:s.net,vat_rate:17,vat_amount:s.vat,gross_amount:s.gross};
+ const offer={company_id:requireCompanyId(),offer_number:$('offerNo').value,offer_date:displayToIso($('date').value),valid_days:+$('valid').value||5,delivery_place:$('place').value,payment_method:$('payment').value,customer_id:customerId,customer_name:customer.name,customer_address:customer.address,customer_city:customer.city,customer_phone:customer.phone,customer_email:customer.email,customer_id_number:customer.id_number,customer_vat_number:customer.vat_number,note:$('note').value,status:$('offerStatus').value||'draft',net_amount:s.net,vat_rate:17,vat_amount:s.vat,gross_amount:s.gross};
  let {data:o,error:oe}=await sb.from('offers').insert(offer).select('id').single();
  if(oe && oe.code==='23505'){
    offer.offer_number=await nextOfferNumber();
@@ -937,7 +939,7 @@ async function openArchivedOffer(id){
  $('buyerCity').value=o.customer_city||'';
  $('buyerPhone').value=o.customer_phone||'';
  $('buyerEmail').value=o.customer_email||'';
- $('buyerTax').value=o.customer_id_number||o.customer_vat_number||'';
+ $('buyerId').value=o.customer_id_number||'';$('buyerVat').value=o.customer_vat_number||'';
  $('note').value=cleanOfferNote(o.note||'');$('offerStatus').value=o.status||'draft';
  $('items').innerHTML='';
  (its||[]).forEach(i=>addItem({code:i.product_code||'',name:i.product_name||'',description:i.description||'',unit:i.unit||'kom',qty:i.quantity,price:i.unit_price,grossprice:(+i.unit_price*1.17).toFixed(2)}));
@@ -980,7 +982,7 @@ async function updateOffer(){
  if(verifyError||!existing||currentOfferId!==editingOfferId){alert('Predračun nije moguće sigurno identificirati. Osvježi arhivu i pokušaj ponovo.');return}
  if(!$('buyerName').value.trim()){alert('Unesi ime / naziv kupca.');return}
  const s=calc();
- const offer={offer_number:$('offerNo').value,offer_date:displayToIso($('date').value),valid_days:+$('valid').value||5,delivery_place:$('place').value,payment_method:$('payment').value,customer_name:$('buyerName').value.trim(),customer_address:$('buyerAddress').value||null,customer_city:$('buyerCity').value||null,customer_phone:$('buyerPhone').value||null,customer_email:$('buyerEmail').value||null,customer_id_number:$('buyerTax').value||null,note:$('note').value,status:$('offerStatus').value||'draft',net_amount:s.net,vat_rate:17,vat_amount:s.vat,gross_amount:s.gross};
+ const offer={offer_number:$('offerNo').value,offer_date:displayToIso($('date').value),valid_days:+$('valid').value||5,delivery_place:$('place').value,payment_method:$('payment').value,customer_name:$('buyerName').value.trim(),customer_address:$('buyerAddress').value||null,customer_city:$('buyerCity').value||null,customer_phone:$('buyerPhone').value||null,customer_email:$('buyerEmail').value||null,customer_id_number:$('buyerId').value||null,customer_vat_number:$('buyerVat').value||null,note:$('note').value,status:$('offerStatus').value||'draft',net_amount:s.net,vat_rate:17,vat_amount:s.vat,gross_amount:s.gross};
  offer.note=addOfferMarker(offer.note,'CORRECTED');
  const {error:oe}=await sb.from('offers').update(offer).eq('id',editingOfferId).eq('company_id',companyId);
  if(oe){alert('Greška pri izmjeni predračuna: '+oe.message);return}
@@ -1034,7 +1036,7 @@ async function newOffer(){
  $('offerNo').value=await nextOfferNumber();
  $('date').value=displayToIso(todayDisplay());
  $('valid').value=5;$('offerStatus').value='draft';$('place').value='Sarajevo';setPaymentValue('Virmanski, avansno');
- ['buyerName','buyerAddress','buyerCity','buyerPhone','buyerEmail','buyerTax'].forEach(id=>$(id).value='');
+ ['buyerName','buyerAddress','buyerCity','buyerPhone','buyerEmail','buyerId','buyerVat'].forEach(id=>$(id).value='');
  $('items').innerHTML='';addItem();
  if(currentCompany?.offer_note_default)$('note').value=currentCompany.offer_note_default;
  ensureEditActions();showEditor();window.scrollTo({top:0,behavior:'smooth'});
@@ -1076,7 +1078,7 @@ async function selectSuggestedCustomer(id){
  let c=customersData.find(x=>x.id===id);
  if(!c){const {data}=await sb.from('customers').select('*').eq('id',id).eq('company_id',requireCompanyId()).single();c=data}
  if(!c)return;
- $('buyerName').value=c.name||'';$('buyerAddress').value=c.address||'';$('buyerCity').value=c.city||'';$('buyerPhone').value=c.phone||'';$('buyerEmail').value=c.email||'';$('buyerTax').value=c.id_number||c.vat_number||'';
+ $('buyerName').value=c.name||'';$('buyerAddress').value=c.address||'';$('buyerCity').value=c.city||'';$('buyerPhone').value=c.phone||'';$('buyerEmail').value=c.email||'';$('buyerId').value=c.id_number||'';$('buyerVat').value=c.vat_number||'';
  $('customerSuggestions').style.display='none';
 }
 async function deleteCustomer(id){
@@ -1186,7 +1188,7 @@ async function saveCustomer(){
    : sb.from('customers').insert({...obj,company_id:requireCompanyId()});
  const {error}=await query;if(error){alert(error.message);return}$('customerForm').style.display='none';await loadCustomers();
 }
-function useCustomer(id){const c=customersData.find(x=>x.id===id);if(!c)return;$('buyerName').value=c.name||'';$('buyerAddress').value=c.address||'';$('buyerCity').value=c.city||'';$('buyerPhone').value=c.phone||'';$('buyerEmail').value=c.email||'';$('buyerTax').value=c.id_number||c.vat_number||'';showEditor()}
+function useCustomer(id){const c=customersData.find(x=>x.id===id);if(!c)return;$('buyerName').value=c.name||'';$('buyerAddress').value=c.address||'';$('buyerCity').value=c.city||'';$('buyerPhone').value=c.phone||'';$('buyerEmail').value=c.email||'';$('buyerId').value=c.id_number||'';$('buyerVat').value=c.vat_number||'';showEditor()}
 async function pickCustomer(){await loadCustomers();showCustomers()}
 
 async function loadProducts(){const {data,error}=await sb.from('products').select('*').eq('company_id',requireCompanyId()).eq('active',true).order('name');if(error){alert(error.message);return}productsData=data||[];productsData.forEach(p=>{try{p._localCategory=localStorage.getItem('productCat:'+p.id)||''}catch(e){}});refreshProductDatalists();renderProducts()}
