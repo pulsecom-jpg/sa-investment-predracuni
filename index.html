@@ -19,7 +19,7 @@ textarea{min-height:90px;resize:vertical}.items{overflow-x:auto}.row{display:gri
 .primary{background:var(--blue);color:#fff}.secondary{background:#fff;color:var(--blue);border:1px solid #b9c9dd}.danger{color:var(--danger);background:#fff;border:1px solid #f0c7c3;padding:11px}
 .actions{display:flex;gap:10px;flex-wrap:wrap}.summary{margin-left:auto;max-width:420px}.sumline{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #edf0f3}.grand{font-size:19px;font-weight:800}
 .preview{display:none}.paper{background:white;max-width:900px;margin:0 auto;padding:45px;min-height:1100px;box-shadow:0 3px 18px #0002}
-.paperHead{display:flex;justify-content:space-between;gap:20px}.brand{font-size:30px;font-weight:800;color:#142c8e}.appLogo{height:44px;max-width:190px;object-fit:contain;display:block}.paperLogo{width:235px;max-height:95px;object-fit:contain;object-position:left center;display:block}.company{text-align:right;font-size:12px;line-height:1.5}
+.paperHead{display:flex;justify-content:space-between;gap:20px}.brand{font-size:30px;font-weight:800;color:#142c8e}.appLogo{height:44px;max-width:190px;object-fit:contain;display:block}.paperLogo{width:auto;max-width:235px;height:auto;max-height:95px;object-fit:contain;object-position:left top;display:block}.company{text-align:right;font-size:12px;line-height:1.5}
 .offerTop{display:flex;justify-content:space-between;gap:30px;margin-top:100px}.offerInfo{line-height:1.55}.buyer{border:1px solid #555;padding:30px;min-width:330px;text-align:center;font-weight:700}
 table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{border:1px solid #777;padding:8px}th{text-align:center}.right{text-align:right}.paperTotals{width:55%;margin:45px 0 0 auto}.note{margin-top:30px;font-size:13px;line-height:1.5}
 @media(max-width:650px){.grid,.grid3{grid-template-columns:1fr}.wrap{padding:10px}.card{padding:14px}.paper{padding:22px}.offerTop{margin-top:55px;display:block}.buyer{min-width:0;margin-top:20px}.paperHead{display:block}.company{text-align:left;margin-top:18px}.paperTotals{width:100%}}
@@ -31,7 +31,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
  .preview{display:block!important;width:210mm!important;margin:0!important;padding:0!important}
  .paper{width:210mm!important;max-width:210mm!important;min-height:0!important;height:auto!important;margin:0!important;padding:10mm 11mm 8mm!important;box-shadow:none!important;overflow:hidden!important;font-size:9.5pt!important}
  .paperHead{display:flex!important;justify-content:space-between!important;align-items:flex-start!important;gap:8mm!important}
- .paperLogo{width:48mm!important;max-height:20mm!important}
+ .paperLogo{width:auto!important;max-width:48mm!important;height:auto!important;max-height:20mm!important;object-fit:contain!important;object-position:left top!important}
  .company{font-size:7.5pt!important;line-height:1.3!important}
  .offerTop{display:flex!important;justify-content:space-between!important;gap:8mm!important;margin-top:12mm!important;align-items:stretch!important}
  .offerInfo{font-size:9pt!important;line-height:1.4!important;flex:1!important}
@@ -178,7 +178,7 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
   .preview { display:block !important; width:100% !important; margin:0 !important; padding:0 !important; }
   .paper { width:198mm !important; max-width:198mm !important; min-height:0 !important; height:auto !important; margin:0 auto !important; padding:5mm 7mm !important; box-shadow:none !important; overflow:hidden !important; font-size:9px !important; line-height:1.18 !important; page-break-after:avoid !important; break-after:avoid-page !important; }
   .paperHead { display:flex !important; justify-content:space-between !important; align-items:flex-start !important; gap:8mm !important; }
-  .paperLogo { width:46mm !important; max-height:17mm !important; }
+  .paperLogo { width:auto !important; max-width:46mm !important; height:auto !important; max-height:17mm !important; object-fit:contain !important; object-position:left top !important; }
   .company { font-size:7.5px !important; line-height:1.22 !important; }
   .offerTop { display:flex !important; justify-content:space-between !important; align-items:stretch !important; gap:7mm !important; margin-top:10mm !important; }
   .offerInfo { width:48% !important; font-size:8.5px !important; line-height:1.35 !important; }
