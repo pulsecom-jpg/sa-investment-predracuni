@@ -1166,19 +1166,25 @@ async function reviewCustomerDuplicates(){
 }
 async function loadCustomers(checkDuplicates=true){const {data,error}=await sb.from('customers').select('*').eq('company_id',requireCompanyId()).order('name');if(error){alert(error.message);return}customersData=data||[];if(checkDuplicates)await reviewCustomerDuplicates();renderCustomers()}
 function showCustomers(){hideMainViews();$('customersBox').style.display='block';loadCustomers();window.scrollTo({top:0,behavior:'smooth'})}
+let customerGroupOpen={legal:false,physical:false};
+function toggleCustomerGroup(type){customerGroupOpen[type]=!customerGroupOpen[type];renderCustomers()}
 function renderCustomers(){
  const q=($('customerSearch')?.value||'').toLowerCase(),tf=$('customerTypeFilter')?.value||'all';
  const typeOf=c=>c.customer_type||((c.id_number||c.vat_number)?'legal':'physical');
  const a=customersData.filter(c=>[c.name,c.city,c.phone,c.email,c.id_number,c.vat_number].join(' ').toLowerCase().includes(q)&&(tf==='all'||typeOf(c)===tf));
- const section=(type,label)=>{const rows=a.filter(c=>typeOf(c)===type);if(!rows.length)return '';return '<div style="font-size:18px;font-weight:800;color:#12345b;padding:10px 12px;background:#f4f7fb;border-radius:10px;margin:8px 0">'+label+' <span style="font-size:12px;color:#667085">('+rows.length+')</span></div>'+rows.map(c=>`<div style="padding:14px 0;border-bottom:1px solid #e7ebf0">
+ const section=(type,label)=>{
+  const rr=a.filter(c=>typeOf(c)===type);if(!rr.length)return '';
+  const open=customerGroupOpen[type]||tf===type||!!q;
+  const rowsHtml=rr.map(c=>`<div style="padding:14px 0;border-bottom:1px solid #e7ebf0">
    <b>${c.name}</b><br>
    <span style="color:#667085">${c.address||''}${c.city?' · '+c.city:''}${c.phone?' · '+c.phone:''}${c.id_number?' · ID: '+c.id_number:''}${c.vat_number?' · PDV: '+c.vat_number:''}</span>
    <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
     <button class="btn secondary" data-edit-customer="${c.id}">Uredi</button>
     <button class="btn secondary" data-use-customer="${c.id}">Koristi u predračunu</button>
     <button class="btn danger" data-delete-customer="${c.id}" style="font-weight:800">🗑 Izbriši kupca</button>
-   </div>
- </div>`).join('')};
+   </div></div>`).join('');
+  return `<button type="button" onclick="toggleCustomerGroup('${type}')" style="width:100%;border:0;cursor:pointer;font:inherit;font-size:18px;font-weight:800;color:#12345b;padding:12px;background:#f4f7fb;border-radius:10px;margin:8px 0;display:flex;justify-content:space-between;align-items:center"><span>${label} <small style="color:#667085">(${rr.length})</small></span><span>${open?'▲':'▼'}</span></button><div style="display:${open?'block':'none'}">${rowsHtml}</div>`;
+ };
  $('customersList').innerHTML=(tf==='legal'?section('legal','🏢 Pravna lica'):tf==='physical'?section('physical','👤 Fizička lica'):section('legal','🏢 Pravna lica')+section('physical','👤 Fizička lica'))||'<div style="color:#667085">Nema kupaca.</div>';
  $('customersList').querySelectorAll('[data-edit-customer]').forEach(b=>b.onclick=()=>editCustomer(b.dataset.editCustomer));
  $('customersList').querySelectorAll('[data-use-customer]').forEach(b=>b.onclick=()=>useCustomer(b.dataset.useCustomer));
