@@ -594,7 +594,7 @@ function addItem(data={}){
  <div><label>Cijena bez PDV</label><input class="price" type="number" step="0.01" value="${data.price||0}"></div>
  <div><label>Cijena sa PDV</label><input class="grossprice" type="number" step="0.01" value="${data.grossprice||((Number(data.price)||0)*1.17).toFixed(2)}"></div>
  <div><label>Ukupno bez PDV</label><input class="total" readonly></div>
- <button class="btn danger" title="Izbriši" onclick="this.parentElement.remove();calc()">🗑</button>
+ <div style="display:flex;gap:5px;align-items:end"><button type="button" class="btn secondary save-row-product" style="padding:10px" title="Snimi artikal u arhivu">💾 Snimi ga</button><button class="btn danger" title="Izbriši" onclick="this.closest('.row').remove();calc()">🗑</button></div>
  <div class="item-description" style="grid-column:1/-1;display:block !important;width:100%;margin-top:4px">
    <label style="display:block;font-weight:700;margin-bottom:6px">Opis / specifikacija artikla (opcionalno)</label>
    <textarea class="description" rows="3" placeholder="Upiši kratki opis ili specifikaciju artikla..." style="display:block !important;width:100% !important;min-height:78px !important;resize:vertical">${data.description||''}</textarea>
@@ -618,7 +618,27 @@ function addItem(data={}){
  netInput.addEventListener('focus',hideProductSuggestions);
  grossInput.addEventListener('focus',hideProductSuggestions);
  r.querySelector('.unit').addEventListener('input',calc);
+ r.querySelector('.save-row-product').addEventListener('click',()=>saveRowProduct(r));
  calc();
+}
+async function saveRowProduct(row){
+ try{
+  const code=row.querySelector('.code').value.trim(),name=row.querySelector('.name').value.trim(),unit=row.querySelector('.unit').value.trim()||'kom',price=+row.querySelector('.price').value||0;
+  if(!name)throw new Error('Unesi naziv artikla prije spremanja.');
+  await ensureProductsLoaded();
+  const norm=v=>String(v||'').trim().toLowerCase();
+  let existing=productsData.find(p=>(code&&norm(p.code)===norm(code))||(!code&&norm(p.name)===norm(name)));
+  if(existing){
+   const {data,error}=await sb.from('products').update({code:code||existing.code||null,name,unit,default_price:price,active:true}).eq('id',existing.id).eq('company_id',requireCompanyId()).select();
+   if(error)throw error;
+   if(data?.[0]){const i=productsData.findIndex(p=>p.id===existing.id);productsData[i]=data[0]}
+   refreshProductDatalists();alert('Artikal već postoji. Podaci su ažurirani u arhivi artikala.');return;
+  }
+  const {data,error}=await sb.from('products').insert({company_id:requireCompanyId(),code:code||null,name,unit,default_price:price,active:true}).select();
+  if(error)throw error;
+  if(data?.[0])productsData.push(data[0]);
+  refreshProductDatalists();alert('Artikal je snimljen u arhivu artikala.');
+ }catch(e){alert('Artikal nije moguće snimiti: '+e.message)}
 }
 function rows(){return [...document.querySelectorAll('#items .row')]}
 function calc(){
