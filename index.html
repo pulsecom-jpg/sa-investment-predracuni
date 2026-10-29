@@ -466,7 +466,7 @@ const SUPABASE_KEY="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSI
 const sb=supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
 
 const $=id=>document.getElementById(id);
-const money=n=>(Number(n)||0).toLocaleString('bs-BA',{minimumFractionDigits:2,maximumFractionDigits:2})+' KM';
+const money=n=>(Number(n)||0).toLocaleString('de-DE',{minimumFractionDigits:2,maximumFractionDigits:2})+' KM';
 function displayDate(iso){
  if(!iso)return '';
  const parts=String(iso).slice(0,10).split('-');
@@ -685,7 +685,7 @@ function fillPreview(){
  $('pBuyer').innerHTML=`${$('buyerName').value||'Kupac'}<br>${$('buyerAddress').value||''}${$('buyerCity').value?', '+$('buyerCity').value:''}`;
  $('pItems').innerHTML=rows().map((r,i)=>{
   let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,d=itemDiscount(r),n=d.before-d.discount,v=n*.17;
-  return `<tr><td>${i+1}</td><td>${r.querySelector('.code').value}</td><td>${r.querySelector('.name').value}${r.querySelector('.description')?.value.trim()?`<div style="font-size:11px;color:#475467;margin-top:4px;white-space:pre-line">${r.querySelector('.description').value}</div>`:''}</td><td>${r.querySelector('.unit').value}</td><td class="right">${q}</td><td class="right">${money(p).replace(' KM','')}</td><td class="right">${d.raw?(d.mode==='fixed'?money(d.raw):d.raw+'%'):'—'}</td><td class="right">${money(n).replace(' KM','')}</td><td class="right">${money(v).replace(' KM','')}</td><td class="right">${money(n+v).replace(' KM','')}</td></tr>`}).join('');
+  return `<tr><td>${i+1}</td><td>${r.querySelector('.code').value}</td><td>${r.querySelector('.name').value}${r.querySelector('.description')?.value.trim()?`<div style="font-size:11px;color:#475467;margin-top:4px;white-space:pre-line">${r.querySelector('.description').value}</div>`:''}</td><td>${r.querySelector('.unit').value}</td><td class="right">${q}</td><td class="right">${money(p).replace(' KM','')}</td><td class="right">${d.raw?(d.mode==='fixed'?money(d.raw).replace(' KM',''):d.raw+'%'):'—'}</td><td class="right">${money(n).replace(' KM','')}</td><td class="right">${money(v).replace(' KM','')}</td><td class="right">${money(n+v).replace(' KM','')}</td></tr>`}).join('');
  $('pTotals').innerHTML=`<div class="sumline"><span>Ukupna vrijednost prije rabata:</span><b>${money(s.before).replace(' KM','')}</b></div><div class="sumline"><span>Ukupan rabat:</span><b>−${money(s.discount).replace(' KM','')}</b></div><div class="sumline"><span>Osnovica za PDV:</span><b>${money(s.net).replace(' KM','')}</b></div><div class="sumline"><span>Iznos PDV-a (17%):</span><b>${money(s.vat).replace(' KM','')}</b></div><div class="sumline grand"><span>UKUPNO SA PDV-om:</span><span>${money(s.gross).replace(' KM','')}</span></div>`;
  $('pNote').innerHTML=$('note').value.replace(/\n/g,'<br>');
 }
@@ -896,7 +896,7 @@ function renderArchive(){
     const g=(i.gross_amount!=null?Number(i.gross_amount):n+v);
     const decoded=decodeItemDescription(i.description),d={raw:decoded.discount,mode:decoded.discountMode};
     const desc=decoded.description?`<div style="font-size:11px;color:#475467;margin-top:4px;white-space:pre-line">${escHtml(decoded.description)}</div>`:'';
-    return `<tr><td>${k+1}</td><td>${i.product_code||''}</td><td>${i.product_name||''}${desc}</td><td>${i.unit||''}</td><td class="right">${q}</td><td class="right">${money(p).replace(' KM','')}</td><td class="right">${d.raw?(d.mode==='fixed'?money(d.raw):d.raw+'%'):'—'}</td><td class="right">${money(n).replace(' KM','')}</td><td class="right">${money(v).replace(' KM','')}</td><td class="right">${money(g).replace(' KM','')}</td></tr>`;
+    return `<tr><td>${k+1}</td><td>${i.product_code||''}</td><td>${i.product_name||''}${desc}</td><td>${i.unit||''}</td><td class="right">${q}</td><td class="right">${money(p).replace(' KM','')}</td><td class="right">${d.raw?(d.mode==='fixed'?money(d.raw).replace(' KM',''):d.raw+'%'):'—'}</td><td class="right">${money(n).replace(' KM','')}</td><td class="right">${money(v).replace(' KM','')}</td><td class="right">${money(g).replace(' KM','')}</td></tr>`;
    }).join('');
    const net=Number(o.net_amount||0),vat=Number(o.vat_amount||0),gross=Number(o.gross_amount||0);
    const note=cleanOfferNote(o.note||'').replace(/\n/g,'<br>');
