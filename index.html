@@ -452,7 +452,7 @@ SA Investment je ovlašteni serviser i prodavac VIVAX klima uređaja.</textarea>
   <div class="offerInfo" id="pInfo"></div>
   <div class="buyer" id="pBuyer"></div>
  </div>
- <table><thead><tr><th>Rb.</th><th>Šifra</th><th>Naziv artikla</th><th>JM</th><th>Kol.</th><th>Jedinična cijena</th><th>Ukupna cijena</th><th>PDV</th><th>Ukupno sa PDV</th></tr></thead><tbody id="pItems"></tbody></table>
+ <table><thead><tr><th>Rb.</th><th>Šifra</th><th>Naziv artikla</th><th>JM</th><th>Kol.</th><th>Jedinična cijena</th><th>Rabat</th><th>Ukupna cijena</th><th>PDV</th><th>Ukupno sa PDV</th></tr></thead><tbody id="pItems"></tbody></table>
  <div class="paperTotals" id="pTotals"></div>
  <div class="note"><i>Napomena:</i><br><span id="pNote"></span></div>
  <div id="pPrepared" style="text-align:right;margin-top:45px"></div>
@@ -686,7 +686,7 @@ function fillPreview(){
  $('pItems').innerHTML=rows().map((r,i)=>{
   let q=+r.querySelector('.qty').value||0,p=+r.querySelector('.price').value||0,d=itemDiscount(r),n=d.before-d.discount,v=n*.17;
   return `<tr><td>${i+1}</td><td>${r.querySelector('.code').value}</td><td>${r.querySelector('.name').value}${r.querySelector('.description')?.value.trim()?`<div style="font-size:11px;color:#475467;margin-top:4px;white-space:pre-line">${r.querySelector('.description').value}</div>`:''}</td><td>${r.querySelector('.unit').value}</td><td class="right">${q}</td><td class="right">${money(p).replace(' KM','')}</td><td class="right">${d.raw?(d.mode==='fixed'?money(d.raw):d.raw+'%'):'—'}</td><td class="right">${money(n).replace(' KM','')}</td><td class="right">${money(v).replace(' KM','')}</td><td class="right">${money(n+v).replace(' KM','')}</td></tr>`}).join('');
- $('pTotals').innerHTML=`<div class="sumline"><span>Ukupna vrijednost:</span><b>${money(s.net).replace(' KM','')}</b></div><div class="sumline"><span>Osnovica za PDV:</span><b>${money(s.net).replace(' KM','')}</b></div><div class="sumline"><span>Iznos PDV-a (17%):</span><b>${money(s.vat).replace(' KM','')}</b></div><div class="sumline grand"><span>UKUPNO SA PDV-om:</span><span>${money(s.gross).replace(' KM','')}</span></div>`;
+ $('pTotals').innerHTML=`<div class="sumline"><span>Ukupna vrijednost prije rabata:</span><b>${money(s.before).replace(' KM','')}</b></div><div class="sumline"><span>Ukupan rabat:</span><b>−${money(s.discount).replace(' KM','')}</b></div><div class="sumline"><span>Osnovica za PDV:</span><b>${money(s.net).replace(' KM','')}</b></div><div class="sumline"><span>Iznos PDV-a (17%):</span><b>${money(s.vat).replace(' KM','')}</b></div><div class="sumline grand"><span>UKUPNO SA PDV-om:</span><span>${money(s.gross).replace(' KM','')}</span></div>`;
  $('pNote').innerHTML=$('note').value.replace(/\n/g,'<br>');
 }
 function showPreview(){fillPreview();$('preview').style.display='block';$('preview').scrollIntoView({behavior:'smooth'})}
@@ -894,7 +894,8 @@ function renderArchive(){
     const n=(i.net_amount!=null?Number(i.net_amount):q*p);
     const v=(i.vat_amount!=null?Number(i.vat_amount):n*.17);
     const g=(i.gross_amount!=null?Number(i.gross_amount):n+v);
-    const desc=i.description?`<div style="font-size:11px;color:#475467;margin-top:4px;white-space:pre-line">${i.description}</div>`:'';
+    const decoded=decodeItemDescription(i.description),d={raw:decoded.discount,mode:decoded.discountMode};
+    const desc=decoded.description?`<div style="font-size:11px;color:#475467;margin-top:4px;white-space:pre-line">${escHtml(decoded.description)}</div>`:'';
     return `<tr><td>${k+1}</td><td>${i.product_code||''}</td><td>${i.product_name||''}${desc}</td><td>${i.unit||''}</td><td class="right">${q}</td><td class="right">${money(p).replace(' KM','')}</td><td class="right">${d.raw?(d.mode==='fixed'?money(d.raw):d.raw+'%'):'—'}</td><td class="right">${money(n).replace(' KM','')}</td><td class="right">${money(v).replace(' KM','')}</td><td class="right">${money(g).replace(' KM','')}</td></tr>`;
    }).join('');
    const net=Number(o.net_amount||0),vat=Number(o.vat_amount||0),gross=Number(o.gross_amount||0);
@@ -910,10 +911,10 @@ function renderArchive(){
        <div class="offerInfo"><b>Ponuda-predračun br.: ${o.offer_number||''}</b><br>Datum ponude: ${displayDate(o.offer_date)}<br>Važenje ponude: ${o.valid_days??''} dana<br>Mjesto isporuke/ugradnje: ${o.delivery_place||''}<br>Način plaćanja: ${o.payment_method||''}</div>
        <div class="buyer">${o.customer_name||'Kupac'}<br>${o.customer_address||''}${o.customer_city?', '+o.customer_city:''}</div>
       </div>
-      <table class="arc-real-table"><thead><tr><th>R.br.</th><th>Šifra</th><th>Naziv / model</th><th>JM</th><th>Količina</th><th>Cijena bez PDV</th><th>Ukupno bez PDV</th><th>PDV</th><th>Ukupno sa PDV</th></tr></thead><tbody>${itemRows}</tbody></table>
+      <table class="arc-real-table"><thead><tr><th>R.br.</th><th>Šifra</th><th>Naziv / model</th><th>JM</th><th>Količina</th><th>Cijena bez PDV</th><th>Rabat</th><th>Ukupno bez PDV</th><th>PDV</th><th>Ukupno sa PDV</th></tr></thead><tbody>${itemRows}</tbody></table>
       <div class="paperTotals">
-       <div class="sumline"><span>Ukupna vrijednost:</span><b>${money(net).replace(' KM','')}</b></div>
-       <div class="sumline"><span>Osnovica za PDV:</span><b>${money(net).replace(' KM','')}</b></div>
+       <div class="sumline"><span>Ukupna vrijednost prije rabata:</span><b>${money((its||[]).reduce((z,x)=>z+Number(x.quantity||0)*Number(x.unit_price||0),0)).replace(' KM','')}</b></div>
+       <div class="sumline"><span>Ukupan rabat:</span><b>${money((its||[]).reduce((z,x)=>z+Number(x.quantity||0)*Number(x.unit_price||0),0)-net).replace(' KM','')}</b></div><div class="sumline"><span>Osnovica za PDV:</span><b>${money(net).replace(' KM','')}</b></div>
        <div class="sumline"><span>Iznos PDV-a (17%):</span><b>${money(vat).replace(' KM','')}</b></div>
        <div class="sumline grand"><span>UKUPNO SA PDV-om:</span><span>${money(gross).replace(' KM','')}</span></div>
       </div>
