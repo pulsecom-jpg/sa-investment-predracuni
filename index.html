@@ -254,6 +254,29 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
  #customersBox .customer-category-results+.customer-category-results .customer-data-head{display:none}
  #customersBox .customer-category-results+.customer-category-results .customer-data-row:first-of-type{border-top:0}
 }
+
+/* Invoice list styling aligned with approved offer archive */
+@media screen {
+ #invoicesBox{max-width:1440px!important;width:100%!important;padding:16px 22px 30px!important}
+ #invoicesBox .card{background:#fff;border:1px solid #e6ebf2;border-radius:10px;box-shadow:none;padding:20px}
+ #invoicesBox .card>div:first-child{border-bottom:1px solid #edf0f4;padding-bottom:14px;margin-bottom:16px}
+ #invoicesBox h2{font-size:21px!important;color:#1d3048;letter-spacing:-.3px}
+ #invoicesBox #invoiceSearch{max-width:520px;border:1px solid #dce3ec;border-radius:8px;padding:11px 13px;font-size:14px;min-height:43px;margin-bottom:10px}
+ #invoicesBox #invoiceSearch:focus{outline:2px solid #c8dcf5;border-color:#3977b6}
+ #invoicesBox .btn{border-radius:8px;padding:8px 10px;font-size:12px}
+ #invoicesBox .secondary{color:#285b93;border-color:#dce5f0}
+ #invoicesBox .invoice-table-wrap{width:100%;overflow-x:auto;border:1px solid #e6ebf2;border-radius:8px}
+ #invoicesBox .invoice-table{width:100%;min-width:980px;border-collapse:collapse;margin:0;table-layout:auto;font-size:12px}
+ #invoicesBox .invoice-table th,#invoicesBox .invoice-table td{border:0!important;border-bottom:1px solid #edf1f5!important;padding:10px 9px!important;vertical-align:middle;line-height:1.35}
+ #invoicesBox .invoice-table th{background:#f5f7fa;color:#52637a;font-weight:700;font-size:12px;text-align:left;white-space:nowrap}
+ #invoicesBox .invoice-table td{height:46px;color:#25364c}
+ #invoicesBox .invoice-table tbody tr:hover{background:#f8faff}
+ #invoicesBox .invoice-number{color:#285b93!important;white-space:nowrap}
+ #invoicesBox .invoice-amount{text-align:right;white-space:nowrap;font-weight:700}
+ #invoicesBox .invoice-actions{display:flex;align-items:center;white-space:nowrap}
+ #invoicesBox .invoice-empty{text-align:center;color:#718096;padding:20px!important}
+ @media(max-width:720px){#invoicesBox{padding:10px!important}#invoicesBox .card{padding:12px}}
+}
 </style>
 
 <style id="print-fix-v32">
@@ -1537,7 +1560,8 @@ async function postInvoiceFromEditor(){await postInvoice(currentInvoiceId);await
 async function loadInvoices(){const {data,error}=await sb.from('invoices').select('*').eq('company_id',requireCompanyId()).order('invoice_date',{ascending:false}).order('created_at',{ascending:false});if(error){alert(error.message);return}invoicesData=data||[];renderInvoices()}
 function renderInvoices(){
  const el=$('invoicesList');if(!el)return;const q=($('invoiceSearch')?.value||'').toLowerCase();const a=invoicesData.filter(x=>(String(x.invoice_number)+' '+String(x.customer_name)).toLowerCase().includes(q));
- el.innerHTML=`<div class="items"><table style="min-width:980px"><thead><tr><th>Broj računa</th><th>Godina</th><th>Datum</th><th>Dospijeće</th><th>Kupac</th><th>Iznos</th><th>Status</th><th>Fiskalni račun</th><th>Akcije</th></tr></thead><tbody>${a.map(x=>`<tr><td><b>${x.invoice_number}</b></td><td>${x.invoice_year}</td><td>${displayDate(x.invoice_date)}</td><td>${displayDate(x.due_date)}</td><td>${x.customer_name||''}</td><td class="right">${money(x.gross_amount)}</td><td>${invoiceStatusLabel(x.status)}</td><td>${x.fiscal_number||'—'}</td><td><div class="actions"><button class="btn secondary" onclick="openInvoice('${x.id}')">${x.status==='draft'?'Otvori / uredi':'Pregled'}</button></div></td></tr>`).join('')||'<tr><td colspan="9">Nema računa.</td></tr>'}</tbody></table></div>`;
+ el.innerHTML=`<div class="invoice-table-wrap"><table class="invoice-table"><thead><tr><th>Broj računa</th><th>Godina</th><th>Datum</th><th>Dospijeće</th><th>Kupac</th><th>Iznos</th><th>Status</th><th>Fiskalni račun</th><th>Akcije</th></tr></thead><tbody>${a.map(x=>`<tr><td class="invoice-number"><b>${x.invoice_number}</b></td><td>${x.invoice_year}</td><td>${displayDate(x.invoice_date)}</td><td>${displayDate(x.due_date)}</td><td>${x.customer_name||''}</td><td class="invoice-amount">${money(x.gross_amount)}</td><td>${invoiceStatusLabel(x.status)}</td><td>${x.fiscal_number||'—'}</td><td><div class="invoice-actions"><button class="btn secondary" onclick="openInvoice('${x.id}')">${x.status==='draft'?'Otvori / uredi':'Pregled'}</button></div></td></tr>`).join('')||'<tr><td colspan="9" class="invoice-empty">Nema računa.</td></tr>'}</tbody></table></div>`;
+
 }
 async function lockInvoice(id){if(!confirm('Zaključati račun? Nakon zaključavanja sadržaj računa se više ne treba mijenjati.'))return;const {error}=await sb.from('invoices').update({status:'locked',locked_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id).eq('company_id',requireCompanyId()).eq('status','draft');if(error){alert(error.message);return}await loadInvoices()}
 async function markInvoiceFiscalized(id){const n=prompt('TEST fiskalizacije: upiši broj fiskalnog računa.\nKasnije će ovaj broj automatski vratiti fiskalni uređaj.');if(!n)return;const {error}=await sb.from('invoices').update({status:'fiscalized',fiscal_number:n.trim(),fiscalized_at:new Date().toISOString(),updated_at:new Date().toISOString()}).eq('id',id).eq('company_id',requireCompanyId()).eq('status','locked');if(error){alert(error.message);return}await loadInvoices()}
