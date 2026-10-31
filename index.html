@@ -247,6 +247,13 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
   #archiveBox .arc-actions .arc-btn{padding:6px!important;font-size:10px!important}
  }
 }
+
+/* Customer category selection lives exclusively in the top tabs */
+@media screen {
+ #customersBox .customer-category-results{overflow-x:auto}
+ #customersBox .customer-category-results+.customer-category-results .customer-data-head{display:none}
+ #customersBox .customer-category-results+.customer-category-results .customer-data-row:first-of-type{border-top:0}
+}
 </style>
 
 <style id="print-fix-v32">
@@ -1282,9 +1289,10 @@ function renderCustomers(){
    <div class="customer-row-actions"><button class="customer-icon-btn" title="Uredi kupca" aria-label="Uredi kupca" data-edit-customer="${c.id}">✎</button><button class="customer-icon-btn" title="Koristi u predračunu" aria-label="Koristi u predračunu" data-use-customer="${c.id}">↗</button><button class="customer-icon-btn delete" title="Izbriši kupca" aria-label="Izbriši kupca" data-delete-customer="${c.id}">×</button></div>
    </div>`).join('');
   const tableHead='<div class="customer-data-head"><span>Naziv</span><span>Grad</span><span>Telefon</span><span>PDV / ID broj</span><span>Akcije</span></div>';
-  return `<button type="button" onclick="toggleCustomerGroup('${type}')" style="width:100%;border:0;cursor:pointer;font:inherit;font-size:18px;font-weight:800;color:#12345b;padding:12px;background:#f4f7fb;border-radius:10px;margin:8px 0;display:flex;justify-content:space-between;align-items:center"><span>${label} <small style="color:#667085">(${allType.length})</small></span><span>${open?'▲':'▼'}</span></button><div style="display:${open?'block':'none'}"><div style="margin:8px 0 10px;position:relative"><input value="${escHtml(customerGroupSearch[type]||'')}" data-group-search="${type}" placeholder="🔎 Traži u ${type==='legal'?'pravnim':'fizičkim'} licima..." oninput="filterCustomerGroup('${type}',this)" style="padding-left:12px"></div>${tableHead+ (rowsHtml||'<div class="customer-empty">Nema rezultata pretrage.</div>')}</div>`;
+  return `<div class="customer-category-results">${tableHead}${rowsHtml||'<div class="customer-empty">Nema rezultata pretrage.</div>'}</div>`;
+
  };
- $('customersList').innerHTML=(tf==='legal'?section('legal','🏢 Pravna lica'):tf==='physical'?section('physical','👤 Fizička lica'):section('legal','🏢 Pravna lica')+section('physical','👤 Fizička lica'))||'<div style="color:#667085">Nema kupaca.</div>';
+ $('customersList').innerHTML=(tf==='legal'?section('legal','🏢 Pravna lica'):tf==='physical'?section('physical','👤 Fizička lica'):section('legal','Pravna lica')+section('physical','Fizička lica'))||'<div style="color:#667085">Nema kupaca.</div>';
  $('customersList').querySelectorAll('[data-edit-customer]').forEach(b=>b.onclick=()=>editCustomer(b.dataset.editCustomer));
  $('customersList').querySelectorAll('[data-use-customer]').forEach(b=>b.onclick=()=>useCustomer(b.dataset.useCustomer));
  $('customersList').querySelectorAll('[data-delete-customer]').forEach(b=>b.onclick=()=>deleteCustomer(b.dataset.deleteCustomer));
