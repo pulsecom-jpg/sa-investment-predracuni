@@ -204,6 +204,49 @@ table{width:100%;border-collapse:collapse;margin-top:60px;font-size:13px}th,td{b
   #archiveBox .card>div:first-child{flex-wrap:wrap}
  }
 }
+
+/* Compact approved mockup layout - customers and archive only */
+@media screen {
+ #customersBox,#archiveBox{max-width:1440px!important;width:100%!important;padding:16px 22px 30px!important}
+ #customersBox .card,#archiveBox .card{border:1px solid #e6ebf2!important;border-radius:10px!important;box-shadow:none!important;padding:20px!important}
+ #customersBox .card:first-child>div:first-child,#archiveBox .card>div:first-child{padding-bottom:12px!important;margin-bottom:12px!important}
+ #customersBox h2,#archiveBox h2{font-size:21px!important}
+ #customersBox .customer-tabs{margin-bottom:12px!important}
+ #customersBox #customersList>button{margin:12px 0 0!important;padding:10px 12px!important;font-size:14px!important}
+ #customersBox #customersList>div{overflow-x:auto}
+ #customersBox .customer-data-head,#customersBox .customer-data-row{display:grid;grid-template-columns:minmax(160px,2.2fr) minmax(90px,1fr) minmax(110px,1.1fr) minmax(130px,1.4fr) 112px;gap:10px;align-items:center;min-width:650px;padding:10px 12px}
+ #customersBox .customer-data-head{background:#f5f7fa;color:#53647b;font-size:12px;font-weight:700;border-bottom:1px solid #e2e8f0}
+ #customersBox .customer-data-row{font-size:13px;border-bottom:1px solid #edf1f5;min-height:46px}
+ #customersBox .customer-data-row:hover{background:#f8faff}
+ #customersBox .customer-data-name{min-width:0}
+ #customersBox .customer-data-name strong{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ #customersBox .customer-data-name small{display:block;font-size:11px;color:#8490a1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+ #customersBox .customer-row-actions{display:flex;gap:6px;justify-content:flex-end}
+ #customersBox .customer-icon-btn{width:29px;height:29px;padding:0;border:1px solid #dfe6ef;background:#fff;color:#2d6299;border-radius:6px;cursor:pointer;font-size:17px}
+ #customersBox .customer-icon-btn.delete{color:#b5444b}
+ #customersBox .customer-empty{padding:16px;color:#718096;font-size:13px}
+ #archiveBox .archive-table-wrap{width:100%;overflow-x:auto!important;border:1px solid #e6ebf2!important;border-radius:8px!important}
+ #archiveBox .archive-table{table-layout:fixed!important;min-width:620px!important;width:100%!important;margin:0!important;border-collapse:collapse!important;font-size:12px!important}
+ #archiveBox .archive-table th,#archiveBox .archive-table td{border:0!important;border-bottom:1px solid #edf1f5!important;padding:9px 10px!important;height:auto!important;vertical-align:middle!important;line-height:1.35!important}
+ #archiveBox .archive-table th{background:#f5f7fa!important;font-size:12px!important;color:#52637a!important;white-space:normal!important}
+ #archiveBox .archive-table th:nth-child(1),#archiveBox .archive-table td:nth-child(1){width:21%!important}
+ #archiveBox .archive-table th:nth-child(2),#archiveBox .archive-table td:nth-child(2){width:26%!important}
+ #archiveBox .archive-table th:nth-child(3),#archiveBox .archive-table td:nth-child(3){width:16%!important;text-align:left!important}
+ #archiveBox .archive-table th:nth-child(4),#archiveBox .archive-table td:nth-child(4){width:16%!important;text-align:right!important}
+ #archiveBox .archive-table th:nth-child(5),#archiveBox .archive-table td:nth-child(5){width:21%!important}
+ #archiveBox .archive-table td{height:49px!important;overflow-wrap:anywhere}
+ #archiveBox .arc-actions{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:5px!important}
+ #archiveBox .arc-actions .arc-btn{font-size:11px!important;line-height:1.2!important;padding:7px 8px!important;white-space:nowrap!important;flex-shrink:0!important}
+ #archiveBox .arc-number-preview{font-size:12px!important}
+ #archiveBox .arc-badge{display:inline-block;margin-left:5px;font-size:9px}
+ #archiveBox .archive-table tbody tr:hover{background:#f8faff!important}
+ @media(max-width:720px){
+  #customersBox,#archiveBox{padding:10px!important}
+  #customersBox .card,#archiveBox .card{padding:12px!important}
+  #archiveBox .archive-table{min-width:620px!important}
+  #archiveBox .arc-actions .arc-btn{padding:6px!important;font-size:10px!important}
+ }
+}
 </style>
 
 <style id="print-fix-v32">
@@ -1232,15 +1275,14 @@ function renderCustomers(){
   const sq=(customerGroupSearch[type]||'').toLowerCase().trim();
   const rr=allType.filter(c=>!sq||[c.name,c.city,c.phone,c.email,c.id_number,c.vat_number].join(' ').toLowerCase().includes(sq));
   const open=customerGroupOpen[type]||tf===type||!!q||!!sq;
-  const rowsHtml=rr.map(c=>`<div style="padding:14px 0;border-bottom:1px solid #e7ebf0">
-   <b>${c.name}</b><br>
-   <span style="color:#667085">${c.address||''}${c.city?' · '+c.city:''}${c.phone?' · '+c.phone:''}${c.id_number?' · ID: '+c.id_number:''}${c.vat_number?' · PDV: '+c.vat_number:''}</span>
-   <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:10px">
-    <button class="btn secondary" data-edit-customer="${c.id}">Uredi</button>
-    <button class="btn secondary" data-use-customer="${c.id}">Koristi u predračunu</button>
-    <button class="btn danger" data-delete-customer="${c.id}" style="font-weight:800">🗑 Izbriši kupca</button>
-   </div></div>`).join('');
-  return `<button type="button" onclick="toggleCustomerGroup('${type}')" style="width:100%;border:0;cursor:pointer;font:inherit;font-size:18px;font-weight:800;color:#12345b;padding:12px;background:#f4f7fb;border-radius:10px;margin:8px 0;display:flex;justify-content:space-between;align-items:center"><span>${label} <small style="color:#667085">(${allType.length})</small></span><span>${open?'▲':'▼'}</span></button><div style="display:${open?'block':'none'}"><div style="margin:8px 0 10px;position:relative"><input value="${escHtml(customerGroupSearch[type]||'')}" data-group-search="${type}" placeholder="🔎 Traži u ${type==='legal'?'pravnim':'fizičkim'} licima..." oninput="filterCustomerGroup('${type}',this)" style="padding-left:12px"></div>${rowsHtml||'<div style="padding:12px;color:#667085">Nema rezultata pretrage.</div>'}</div>`;
+  const rowsHtml=rr.map(c=>`<div class="customer-data-row">
+   <div class="customer-data-name"><strong>${escHtml(c.name||'')}</strong><small>${escHtml(c.address||'')}</small></div>
+   <span>${escHtml(c.city||'—')}</span><span>${escHtml(c.phone||'—')}</span>
+   <span>${escHtml(c.vat_number||c.id_number||'—')}</span>
+   <div class="customer-row-actions"><button class="customer-icon-btn" title="Uredi kupca" aria-label="Uredi kupca" data-edit-customer="${c.id}">✎</button><button class="customer-icon-btn" title="Koristi u predračunu" aria-label="Koristi u predračunu" data-use-customer="${c.id}">↗</button><button class="customer-icon-btn delete" title="Izbriši kupca" aria-label="Izbriši kupca" data-delete-customer="${c.id}">×</button></div>
+   </div>`).join('');
+  const tableHead='<div class="customer-data-head"><span>Naziv</span><span>Grad</span><span>Telefon</span><span>PDV / ID broj</span><span>Akcije</span></div>';
+  return `<button type="button" onclick="toggleCustomerGroup('${type}')" style="width:100%;border:0;cursor:pointer;font:inherit;font-size:18px;font-weight:800;color:#12345b;padding:12px;background:#f4f7fb;border-radius:10px;margin:8px 0;display:flex;justify-content:space-between;align-items:center"><span>${label} <small style="color:#667085">(${allType.length})</small></span><span>${open?'▲':'▼'}</span></button><div style="display:${open?'block':'none'}"><div style="margin:8px 0 10px;position:relative"><input value="${escHtml(customerGroupSearch[type]||'')}" data-group-search="${type}" placeholder="🔎 Traži u ${type==='legal'?'pravnim':'fizičkim'} licima..." oninput="filterCustomerGroup('${type}',this)" style="padding-left:12px"></div>${tableHead+ (rowsHtml||'<div class="customer-empty">Nema rezultata pretrage.</div>')}</div>`;
  };
  $('customersList').innerHTML=(tf==='legal'?section('legal','🏢 Pravna lica'):tf==='physical'?section('physical','👤 Fizička lica'):section('legal','🏢 Pravna lica')+section('physical','👤 Fizička lica'))||'<div style="color:#667085">Nema kupaca.</div>';
  $('customersList').querySelectorAll('[data-edit-customer]').forEach(b=>b.onclick=()=>editCustomer(b.dataset.editCustomer));
