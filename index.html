@@ -802,13 +802,25 @@ function fillPreview(){
 }
 function showPreview(){fillPreview();$('preview').style.display='block';$('preview').scrollIntoView({behavior:'smooth'})}
 function printOffer(){fillPreview();window.print()}
+function wordReadyPaper(paper){
+ const clone=paper.cloneNode(true);
+ for(const cls of ['paperHead','offerTop']){
+  const el=clone.querySelector('.'+cls);if(!el)continue;
+  const children=[...el.children];if(children.length<2)continue;
+  const t=document.createElement('table');t.setAttribute('width','100%');t.style.cssText='width:100%;table-layout:fixed;border-collapse:collapse;margin-bottom:14px';
+  const tr=t.insertRow();children.slice(0,2).forEach((child,i)=>{const td=tr.insertCell();td.setAttribute('width',i===0?'43%':'57%');td.style.cssText='width:'+(i===0?'43%':'57%')+';vertical-align:top;border:0;padding:0 8px 8px 0';td.appendChild(child);});el.replaceWith(t);
+ }
+ clone.querySelectorAll('img').forEach(img=>{if(img.style.display==='none'){img.remove();return}const original=paper.querySelector('#'+img.id),w=150,h=Math.max(22,Math.min(85,Math.round(w*((original?.naturalHeight||80)/(original?.naturalWidth||180)))));img.setAttribute('width',w);img.setAttribute('height',h);img.style.cssText='width:'+w+'px!important;height:'+h+'px!important;max-width:'+w+'px!important;max-height:'+h+'px!important;object-fit:contain';});
+ clone.querySelectorAll('table').forEach(t=>{t.setAttribute('width','100%');t.style.width='100%';t.style.tableLayout='fixed';});
+ return clone;
+}
 function downloadOfferWord(){
  try{
   fillPreview();
   const paper=document.querySelector('#preview .paper');
   if(!paper)throw new Error('Predračun nije dostupan.');
-  const styles='@page{size:A4;margin:15mm}body{font-family:Arial,sans-serif;color:#172033;font-size:10pt}table{border-collapse:collapse;width:100%;font-size:9pt}th,td{border:1px solid #d9e1ea;padding:5px}.paper{width:100%;max-width:100%;min-height:0;padding:0;box-shadow:none}.paperHead{display:flex;justify-content:space-between;gap:20px}.right{text-align:right}.sumline{padding:6px 0}.grand{font-weight:bold;font-size:14pt}img{max-width:170px;height:auto}';
-  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+styles+'</style></head><body>'+paper.outerHTML+'</body></html>';
+  const styles='@page{size:A4;margin:15mm}body{font-family:Arial,sans-serif;color:#172033;font-size:10pt}table{border-collapse:collapse;width:100%;font-size:9pt}th,td{border:1px solid #d9e1ea;padding:5px}.paper{width:100%;max-width:100%;min-height:0;padding:0;box-shadow:none}.paperHead{display:flex;justify-content:space-between;gap:20px}.right{text-align:right}.sumline{padding:6px 0}.grand{font-weight:bold;font-size:14pt}img{max-width:150px!important;height:auto} .paperHead,.offerTop{width:100%} .paper td{word-wrap:break-word} .paper table{width:100%;table-layout:fixed} .paper th{font-size:7pt}.paper td{font-size:8pt}';
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+styles+'</style></head><body>'+wordReadyPaper(paper).outerHTML+'</body></html>';
   const blob=new Blob(['\ufeff',html],{type:'application/msword;charset=utf-8'});
   const url=URL.createObjectURL(blob),a=document.createElement('a');
   a.href=url;a.download='Predracun-'+String($('offerNo')?.value||'novi').replace(/[^a-zA-Z0-9_-]+/g,'-')+'.doc';
@@ -1581,8 +1593,8 @@ async function downloadInvoiceWord(){
   await refreshInvoiceForOutput();fillInvoicePreview();
   const paper=$('invoicePreview').querySelector('.paper');
   if(!paper)throw Error('Predložak računa nije pronađen.');
-  const css='@page{size:A4;margin:15mm}body{font-family:Arial,sans-serif;font-size:10pt;color:#172033}table{border-collapse:collapse;width:100%;font-size:9pt}td,th{border:1px solid #d9e1ea;padding:5px;text-align:left}.paper{width:100%;box-shadow:none!important;padding:0!important}.paperHead{display:flex;justify-content:space-between}.right{text-align:right}.sumline{margin:5px 0}.grand{font-size:14pt;font-weight:bold}img{max-width:160px;height:auto}';
-  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Račun</title><style>'+css+'</style></head><body>'+paper.outerHTML+'</body></html>';
+  const css='@page{size:A4;margin:15mm}body{font-family:Arial,sans-serif;font-size:10pt;color:#172033}table{border-collapse:collapse;width:100%;font-size:9pt}td,th{border:1px solid #d9e1ea;padding:5px;text-align:left}.paper{width:100%;box-shadow:none!important;padding:0!important}.paperHead{display:flex;justify-content:space-between}.right{text-align:right}.sumline{margin:5px 0}.grand{font-size:14pt;font-weight:bold}img{max-width:150px!important;height:auto} .paperHead,.offerTop{width:100%} .paper td{word-wrap:break-word} .paper table{width:100%;table-layout:fixed} .paper th{font-size:7pt}.paper td{font-size:8pt}';
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><title>Račun</title><style>'+css+'</style></head><body>'+wordReadyPaper(paper).outerHTML+'</body></html>';
   const blob=new Blob(['\ufeff',html],{type:'application/msword;charset=utf-8'});
   const url=URL.createObjectURL(blob),link=document.createElement('a');
   link.href=url;link.download='Racun-'+String(currentInvoice.invoice_number||'racun').replace(/[^a-zA-Z0-9_-]+/g,'-')+'.doc';
