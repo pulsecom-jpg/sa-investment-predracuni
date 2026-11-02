@@ -544,6 +544,7 @@ SA Investment je ovlašteni serviser i prodavac VIVAX klima uređaja.</textarea>
   <button class="btn primary" onclick="showPreview()">Pregled predračuna</button>
   <button class="btn primary" onclick="printOffer()">Štampaj</button>
   <button class="btn secondary" onclick="downloadPDF()">⬇ Download PDF</button>
+  <button class="btn secondary" onclick="downloadOfferWord()">⬇ Download Word</button>
  </div>
 </div>
 
@@ -801,6 +802,19 @@ function fillPreview(){
 }
 function showPreview(){fillPreview();$('preview').style.display='block';$('preview').scrollIntoView({behavior:'smooth'})}
 function printOffer(){fillPreview();window.print()}
+function downloadOfferWord(){
+ try{
+  fillPreview();
+  const paper=document.querySelector('#preview .paper');
+  if(!paper)throw new Error('Predračun nije dostupan.');
+  const styles='@page{size:A4;margin:15mm}body{font-family:Arial,sans-serif;color:#172033;font-size:10pt}table{border-collapse:collapse;width:100%;font-size:9pt}th,td{border:1px solid #d9e1ea;padding:5px}.paper{width:100%;max-width:100%;min-height:0;padding:0;box-shadow:none}.paperHead{display:flex;justify-content:space-between;gap:20px}.right{text-align:right}.sumline{padding:6px 0}.grand{font-weight:bold;font-size:14pt}img{max-width:170px;height:auto}';
+  const html='<!DOCTYPE html><html><head><meta charset="utf-8"><style>'+styles+'</style></head><body>'+paper.outerHTML+'</body></html>';
+  const blob=new Blob(['\ufeff',html],{type:'application/msword;charset=utf-8'});
+  const url=URL.createObjectURL(blob),a=document.createElement('a');
+  a.href=url;a.download='Predracun-'+String($('offerNo')?.value||'novi').replace(/[^a-zA-Z0-9_-]+/g,'-')+'.doc';
+  document.body.appendChild(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(url),10000);
+ }catch(e){alert('Word dokument nije moguće kreirati: '+e.message)}
+}
 async function downloadPDF(){
  fillPreview();
  const paper=document.querySelector('#preview .paper');
