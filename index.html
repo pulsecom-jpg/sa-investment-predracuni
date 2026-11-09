@@ -920,7 +920,9 @@ async function login(){
 async function logout(){await sb.auth.signOut();location.reload()}
 async function boot(){
  if(passwordRecoveryMode){showPasswordResetForm();return}
- const {data:{session}}=await sb.auth.getSession();
+ let session=null;
+ try{const result=await Promise.race([sb.auth.getSession(),new Promise((_,reject)=>setTimeout(()=>reject(new Error('Supabase ne odgovara. Provjeri internet vezu i pokušaj ponovo.')),10000))]);session=result?.data?.session||null;if(result?.error)throw result.error;}
+ catch(e){console.error('Session initialization:',e);$('loginBox').style.display='block';$('loginMsg').textContent='Nije moguće provjeriti prijavu: '+(e.message||'Greška veze');return;}
  $('loginBox').style.display=session?'none':'block';
  $('editorBox').style.display='none';
  $('topNav').style.display=session?'block':'none';
@@ -1638,7 +1640,7 @@ function showEditor(){
 sb.auth.onAuthStateChange((event,session)=>{
  if(event==='PASSWORD_RECOVERY'){showPasswordResetForm()}
 });
-boot();
+boot().catch(e=>{console.error('Pokretanje aplikacije:',e);$('loginBox').style.display='block';$('loginMsg').textContent='Greška pokretanja: '+(e.message||'Nepoznata greška');});
 </script>
 </body>
 </html>
