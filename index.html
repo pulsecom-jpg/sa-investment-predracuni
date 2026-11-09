@@ -801,7 +801,30 @@ function fillPreview(){
  $('pNote').innerHTML=$('note').value.replace(/\n/g,'<br>');
 }
 function showPreview(){fillPreview();$('preview').style.display='block';$('preview').scrollIntoView({behavior:'smooth'})}
-function printOffer(){fillPreview();window.print()}
+async function printOffer(){
+ // Print the same A4 PDF rendering used by Download PDF, not the full application page.
+ fillPreview();
+ const paper=document.querySelector('#preview .paper');
+ if(!paper||!window.html2canvas||!window.jspdf){alert('PDF modul nije učitan. Osvježi stranicu i pokušaj ponovo.');return}
+ const preview=$('preview'),oldDisplay=preview.style.display;
+ preview.style.display='block';
+ try{
+  const canvas=await html2canvas(paper,{scale:2,useCORS:true,backgroundColor:'#ffffff',logging:false});
+  const {jsPDF}=window.jspdf,pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+  const pw=210,ph=297,margin=5,ratio=Math.min((pw-2*margin)/canvas.width,(ph-2*margin)/canvas.height);
+  const w=canvas.width*ratio,h=canvas.height*ratio;
+  pdf.addImage(canvas.toDataURL('image/jpeg',0.96),'JPEG',(pw-w)/2,margin,w,h,undefined,'FAST');
+  const blob=pdf.output('blob'),url=URL.createObjectURL(blob);
+  const frame=document.createElement('iframe');
+  frame.setAttribute('title','Štampanje predračuna');
+  frame.style.cssText='position:fixed;right:0;bottom:0;width:1px;height:1px;border:0;opacity:0;pointer-events:none';
+  document.body.appendChild(frame);
+  frame.onload=()=>{try{frame.contentWindow.focus();frame.contentWindow.print()}catch(e){window.open(url,'_blank')}};
+  frame.src=url;
+  setTimeout(()=>{frame.remove();URL.revokeObjectURL(url)},120000);
+ }catch(e){console.error(e);alert('Štampanje nije uspjelo: '+e.message)}
+ finally{preview.style.display=oldDisplay}
+}
 function wordReadyPaper(paper){
  const clone=paper.cloneNode(true);
  for(const cls of ['paperHead','offerTop']){
